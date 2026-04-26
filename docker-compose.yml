@@ -1,6 +1,6 @@
 services:
   kap01:
-    build: .
+    image: kartik705/kap01:latest
     container_name: kap01_app
     restart: always
     ports:
