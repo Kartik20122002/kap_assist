@@ -1,31 +1,20 @@
-import { Geist, Geist_Mono, Inter, Roboto } from "next/font/google"
-
+"use client"
+import type { ReactNode } from "react"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
+import InitAuth from "./initAuth"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
 
-const robotoHeading = Roboto({subsets:['latin'],variable:'--font-heading'});
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
-
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable, robotoHeading.variable)}
-    >
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <InitAuth />
+            {children}
+        </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

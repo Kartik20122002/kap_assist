@@ -1,0 +1,186 @@
+{
+  "issue_statuses": [
+    {
+      "id": 1,
+      "name": "New",
+      "is_closed": false
+    },
+    {
+      "id": 7,
+      "name": "Assigned",
+      "is_closed": false
+    },
+    {
+      "id": 2,
+      "name": "In Progress",
+      "is_closed": false
+    },
+    {
+      "id": 3,
+      "name": "Resolved",
+      "is_closed": false
+    },
+    {
+      "id": 4,
+      "name": "Feedback",
+      "is_closed": false
+    },
+    {
+      "id": 6,
+      "name": "Rejected",
+      "is_closed": true
+    },
+    {
+      "id": 8,
+      "name": "Ready",
+      "is_closed": false
+    },
+    {
+      "id": 9,
+      "name": "Implemented",
+      "is_closed": false
+    },
+    {
+      "id": 10,
+      "name": "Validated",
+      "is_closed": false
+    },
+    {
+      "id": 11,
+      "name": "On Hold",
+      "is_closed": false
+    },
+    {
+      "id": 12,
+      "name": "Need Info",
+      "is_closed": false
+    },
+    {
+      "id": 13,
+      "name": "Reopened",
+      "is_closed": false
+    },
+    {
+      "id": 14,
+      "name": "Approved",
+      "is_closed": false
+    },
+    {
+      "id": 15,
+      "name": "Analyzed",
+      "is_closed": false
+    },
+    {
+      "id": 16,
+      "name": "Completed",
+      "is_closed": false
+    },
+    {
+      "id": 5,
+      "name": "Closed",
+      "is_closed": true
+    },
+    {
+      "id": 17,
+      "name": "Mitigation in progress",
+      "is_closed": false
+    },
+    {
+      "id": 18,
+      "name": "Contingency in progress",
+      "is_closed": false
+    },
+    {
+      "id": 19,
+      "name": "Expired",
+      "is_closed": true
+    },
+    {
+      "id": 20,
+      "name": "Temp Fixed",
+      "is_closed": false
+    },
+    {
+      "id": 21,
+      "name": "Deferred",
+      "is_closed": false
+    },
+    {
+      "id": 22,
+      "name": "Review Completed",
+      "is_closed": false
+    },
+    {
+      "id": 23,
+      "name": "Rework Completed",
+      "is_closed": false
+    },
+    {
+      "id": 24,
+      "name": "Cancelled",
+      "is_closed": true
+    },
+    {
+      "id": 25,
+      "name": "Enhancement in progress",
+      "is_closed": false
+    },
+    {
+      "id": 26,
+      "name": "Exploitation in progress",
+      "is_closed": false
+    },
+    {
+      "id": 27,
+      "name": "CR Accepted",
+      "is_closed": false
+    },
+    {
+      "id": 28,
+      "name": "CR in Process Design Phase",
+      "is_closed": false
+    },
+    {
+      "id": 29,
+      "name": "CR Moved to implementation",
+      "is_closed": false
+    },
+    {
+      "id": 30,
+      "name": "CR Closed",
+      "is_closed": false
+    },
+    {
+      "id": 31,
+      "name": "CR Not Accepted",
+      "is_closed": false
+    },
+    {
+      "id": 32,
+      "name": "Retrospected",
+      "is_closed": false
+    },
+    {
+      "id": 33,
+      "name": "On Track",
+      "is_closed": false
+    },
+    {
+      "id": 34,
+      "name": "Delayed",
+      "is_closed": false
+    },
+    {
+      "id": 35,
+      "name": "Released",
+      "is_closed": false
+    },
+    {
+      "id": 36,
+      "name": "Spillover",
+      "is_closed": true
+    }
+  ],
+  "Task Statuses" : ["New","Assigned",["In Progress","Completed (Actual Start Date)"],"Closed (Actual End Date)"],
+  "User Story Statuses" : ["New","Assigned","Ready (Aprroval , Acceptance Criteira)","In Progress (Actual Start and End Date)","Implemented","Closed (Actual Size)"]
+}
