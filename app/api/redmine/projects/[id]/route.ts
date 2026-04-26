@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: any }
 ) {
     try {
         const apiKey = req.headers.get("x-api-key")

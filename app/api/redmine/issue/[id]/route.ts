@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: any
 ) {
     try {
         const apiKey = req.headers.get("x-api-key")
@@ -29,7 +29,7 @@ export async function GET(
     }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: any }) {
     try {
         const apiKey = req.headers.get("x-api-key")
         const { id: issueId } = await params

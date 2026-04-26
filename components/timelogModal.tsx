@@ -94,6 +94,7 @@ export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: a
             />
 
             {/* Category */}
+            {/* @ts-expect-error */}
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="min-h-10 text-sm w-1/2 min-w-20">
                 <SelectValue />

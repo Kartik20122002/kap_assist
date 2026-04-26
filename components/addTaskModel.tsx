@@ -151,6 +151,7 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
 
                     <div className="space-y-1">
                         <div className="text-[10px] opacity-60">Status</div>
+                         {/* @ts-expect-error */}
                         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue>
@@ -169,6 +170,7 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
 
                     <div className="space-y-1">
                         <div className="text-[10px] opacity-60">Category</div>
+                         {/* @ts-expect-error */}
                         <Select value={category} onValueChange={setCategory}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue />

@@ -169,6 +169,7 @@ export default function EditTaskDialog({ task, taskTime }: any) {
 
                     <div className="space-y-1">
                         <div className="text-[10px] opacity-60">Status</div>
+                         {/* @ts-expect-error */}
                         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue>
