@@ -1,0 +1,7 @@
+services:
+  kap01:
+    build: .
+    container_name: kap01_app
+    restart: always
+    ports:
+      - "3001:3000"
