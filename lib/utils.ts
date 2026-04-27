@@ -14,7 +14,7 @@ export const statusStyles: any = {
 }
 
 export const ApiConfig = {
-  refreshInterval: 120,
+  refreshInterval: 120 * 1000,
   revalidateIfStale: false,
   revalidateOnFocus: false,
   keepPreviousData: false,
