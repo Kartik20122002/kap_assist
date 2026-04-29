@@ -10,11 +10,11 @@ export const statusStyles: any = {
   "Assigned": "bg-blue-500/20 text-blue-400",
   "In Progress": "bg-yellow-500/20 text-yellow-400",
   "Completed": "bg-green-500/20 text-green-400",
-  "Closed": "bg-red-600/20 text-emerald-400",
+  "Closed": "bg-red-600/20 text-red-400",
 }
 
 export const ApiConfig = {
-  refreshInterval: 120,
+  refreshInterval: 120 * 1000,
   revalidateIfStale: false,
   revalidateOnFocus: false,
   keepPreviousData: false,

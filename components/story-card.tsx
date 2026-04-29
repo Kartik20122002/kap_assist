@@ -2,13 +2,6 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import useSWR from "swr"
 import { getTasks } from "@/lib/api/task"
 import { getTimeEntries } from "@/lib/api/time"
@@ -29,6 +22,8 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     story.custom_fields?.find((f: any) =>
       f.name.includes("Acceptance")
     )?.value
+
+    
 
   const { data: time_entries } = useSWR(
     story?.project?.id ? ["time_entries", story?.project?.id, story?.assigned_to?.id] : null,
@@ -63,16 +58,18 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
         {/* Header */}
         <div className="flex justify-between items-center">
-          <div className="text-sm font-medium line-clamp-1">
+          <div className="text-base font-medium line-clamp-1">
             {story.subject}
           </div>
 
           <div className="flex items-center gap-4">
-            <CreateTaskDialog parent_issue_id ={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />
+            <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />
+
 
             <Button size="sm" variant="default" className="h-6 text-[10px] px-2">
               Update
             </Button>
+            <span className={`px-2 rounded-full ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
           </div>
         </div>
 
@@ -143,20 +140,17 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
 
       {/* Left */}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">
+        <div className="text-base font-medium truncate-1">
           {task.subject}
         </div>
 
         {/* 🔥 labeled row */}
-        <div className="flex gap-3 text-xs text-muted-foreground mt-0.5">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+
+          <span className={`px-2 text-xs rounded-full h-4 ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
 
           <div className="flex gap-1">
-            <span className="opacity-60">Status:</span>
-            <span className={`px-2 rounded-full ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
-          </div>
-
-          <div className="flex gap-1">
-            <span className="opacity-60">Est:</span>
+            <span className="opacity-60">Estimated:</span>
             <span>{task.estimated_hours || 0}h</span>
           </div>
 

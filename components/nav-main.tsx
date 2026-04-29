@@ -11,17 +11,11 @@ import {
 import { useRouter } from "next/navigation"
 
 export function NavMain({
-  epics, time_entries
+  time_entries
 }: {
-  epics: {
-    title: string
-    url: string
-    icon?: React.ReactNode
-  }[], time_entries: any[]
+  time_entries: any[]
 }) {
   const router = useRouter()
-
-  const goToProject = (url: string) => router.push(url)
 
   const grouped = Object.values(
     (time_entries ?? [])?.reduce((acc: any, entry: any) => {
@@ -40,20 +34,6 @@ export function NavMain({
     .slice(0, 7)
 
   return (<>
-      <SidebarGroup>
-        <SidebarGroupLabel>Epics</SidebarGroupLabel>
-        <SidebarMenu>
-          {epics?.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton onClick={() => goToProject(item.url)} tooltip={item.title}>
-                {item.icon}
-                <span className="text-nowrap">{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
-
       <SidebarGroup className="bg-accent/20 rounded-t-sm border border-b-0 border-accent">
         <SidebarGroupLabel>Recent Timelogs</SidebarGroupLabel>
         <SidebarMenu>

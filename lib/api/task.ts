@@ -7,7 +7,7 @@ export const getTasks = async (parent_id: number) => {
 
 export const createTask = async (issue: any) => {
   try {
-    const res = await api.post(`/issue`, {
+    await api.post(`/issue`, {
       issue
     })
     return true

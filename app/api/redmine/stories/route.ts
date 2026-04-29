@@ -4,13 +4,14 @@ export async function GET(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
     const project_id = req.nextUrl.searchParams.get("project_id")
-    const epic_id = req.nextUrl.searchParams.get("epic_id")
     const assigned_to = req.nextUrl.searchParams.get("assigned_to")
+    const fixed_version_id = req.nextUrl.searchParams.get("fixed_version_id")
 
-    let url = `https://kap01.kpit.com/kap/issues.json?tracker_id=5&include=relations`
+    // ?project_id=${projectId}
+    let url = `https://kap01.kpit.com/kap/issues.json?tracker_id=5&include=relations&status_id=*`
 
-    if(epic_id) url = url + `&epic_id=${epic_id}`
-    if(project_id) url = url + `&project_id=${project_id}`
+    if (project_id) url = url + `&project_id=${project_id}`
+    if (fixed_version_id) url = url + `&fixed_version_id=${fixed_version_id}`
     if (assigned_to) url = url + `&assigned_to_id=${assigned_to}`
 
     const res = await fetch(
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
         },
       }
     )
+
 
     if (res.status === 200) {
       const data = await res.json()

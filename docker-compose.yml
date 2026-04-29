@@ -1,7 +1,0 @@
-services:
-  kap01:
-    image: kartik705/kap01:latest
-    container_name: kap01_app
-    restart: always
-    ports:
-      - "3001:3000"

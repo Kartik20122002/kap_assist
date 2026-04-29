@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useParams } from "next/navigation"
@@ -9,7 +10,6 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
 import StoryCard from "@/components/story-card"
 import {
   Select,
@@ -19,10 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { getCurrentUser } from "@/lib/api/user"
-import { adminIds } from "@/admins"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { useMemo, useState } from "react"
+import {  useState } from "react"
 import { ApiConfig } from "@/lib/utils"
 
 export function SwitchDemo() {
@@ -49,7 +48,7 @@ export default function EpicPage() {
 
 
 
-  const roles = user?.memberships?.map((mm: any) => mm.project?.id === data?.project?.id ? mm?.roles ?? [] : []).flat()?.sort((a: any, b: any) => a.id - b.id);
+  const roles = user?.memberships?.map((mm : {project : {id : number} , roles : any[]}) => mm.project?.id === data?.project?.id ? mm?.roles ?? [] : []).flat()?.sort((a: any, b: any) => a.id - b.id);
   const isAdmin = roles?.some((role: { id: number }) => role.id == 6)
 
   const { data: userStories } = useSWR(["epicStories", id, isAdmin], () =>

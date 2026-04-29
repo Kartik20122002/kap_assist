@@ -18,15 +18,17 @@ import {
   IconWaveSine,
   IconCommand,
   IconFrame,
+  IconTarget,
 } from "@tabler/icons-react"
 
 import { getCurrentUser } from "@/lib/api/user"
 import { getProjects } from "@/lib/api/project"
-import { getEpicById, getEpics } from "@/lib/api/epic"
+import { getSprints } from "@/lib/api/sprint"
 import useSWR from "swr"
 import { getTimeEntries } from "@/lib/api/time"
 import { ApiConfig } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { SprintList } from "@/components/sprint-list"
 
 
 
@@ -44,7 +46,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ? {
       name: `${user.firstname} ${user.lastname}`,
       email: user.login,
-      id: user.id,
+      id: user?.id,
       memberships: user?.memberships ?? [],
       avatar: "",
     }
@@ -74,38 +76,52 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     router.push("/app")
   }
 
-  const { data: epics } = useSWR(selectedProject?.id ? ["epic", selectedProject.id] : null, () =>
-    getEpics(selectedProject.id), ApiConfig
+  const { data: sprints } = useSWR(selectedProject?.id ? ["sprints", selectedProject?.id] : null, () =>
+    getSprints(selectedProject?.id), ApiConfig
   )
 
-
-
-  const epicList = epics?.map((e: any) => {
+  // Transform sprints data to match Sprint interface
+  const sprintList = sprints?.versions?.map((s: any) => {
     return {
-      title: e.subject,
-      url: `/app/epics/${e.id}`,
-      icon: <IconFrame />,
+      id: s.id,
+      name: s.name,
+      status: s.status,
+      due_date: s.due_date,
+      created_on: s.created_on,
+      icon: <IconTarget className="size-4" />,
       projectId: selectedProject?.id
     }
+  }).sort((a: any, b: any) => {
+    return new Date(b.due_date).getTime() - new Date(a.due_date).getTime();
   })
+    ?? []
 
 
-  const { data: time_entries } = useSWR(selectedProject?.id ? ["time_entries", selectedProject.id, user.id] : null, () =>
-    getTimeEntries(selectedProject.id, user.id), ApiConfig
+
+  const { data: time_entries } = useSWR((selectedProject?.id && user?.id) ? ["time_entries", selectedProject.id, user?.id] : null, () =>
+    getTimeEntries(selectedProject?.id, user?.id), ApiConfig
   )
+
+  // Calculate if user is admin for the selected project
+  const isAdmin = React.useMemo(() => {
+    if (!user?.memberships || selectedProject?.id === 0) return false
+    const projectMembership = user.memberships.find((m: any) => m.project?.id === selectedProject?.id)
+    return projectMembership?.roles?.some((role: any) => role.id === 6) ?? false
+  }, [user?.memberships, selectedProject?.id])
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} setActiveProject={setProject} activeProject={selectedProject} />
+        <TeamSwitcher teams={data?.teams} setActiveProject={setProject} activeProject={selectedProject} />
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain epics={epicList} time_entries={time_entries} />
+        <SprintList sprints={sprintList} icon={<IconTarget className="size-4" />} projectId={selectedProject?.id} isAdmin={isAdmin} />
+        <NavMain time_entries={time_entries} />
       </SidebarContent>
 
       <SidebarFooter>
-        {userData && <NavUser user={userData} projectId={selectedProject.id} />}
+        {userData && <NavUser user={userData} projectId={selectedProject?.id} />}
       </SidebarFooter>
 
       <SidebarRail />

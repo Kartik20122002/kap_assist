@@ -17,10 +17,6 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify(body),
         })
 
-        const rs = await res.json()
-
-        console.log(rs)
-
         return new Response(null, { status: res.status })
 
     } catch (err) {

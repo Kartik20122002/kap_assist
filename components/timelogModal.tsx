@@ -45,14 +45,14 @@ export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: a
     )
 
     // 🔥 refresh time entries
-    mutate(["time_entries", projectId])
+    mutate(key => Array.isArray(key) && key[0] === "time_entries")
 
     setOpen(false)
     setHours("")
     setComments("")
   }
 
-  const handleReset = async ()=>{
+  const handleReset = async () => {
     setDate(new Date().toISOString().split("T")[0])
     setHours("");
     setComments("");
@@ -107,7 +107,7 @@ export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: a
                 ))}
               </SelectContent>
             </Select>
-            
+
 
             {/* Comments */}
             <Input

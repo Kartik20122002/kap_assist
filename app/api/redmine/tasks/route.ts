@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
     const parent_id = req.nextUrl.searchParams.get("parent_id")
     const assigned_to = req.nextUrl.searchParams.get("assigned_to")
 
-    let url = `https://kap01.kpit.com/kap/issues.json?&tracker_id=6&parent_id=${parent_id}&include=journals`
+    let url = `https://kap01.kpit.com/kap/issues.json?&tracker_id=6&status_id=*&parent_id=${parent_id}&include=journals`
 
     if(assigned_to) url = url + `&assigned_to_id=${assigned_to}`
 

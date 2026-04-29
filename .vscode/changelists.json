@@ -1,0 +1,40 @@
+{
+  "changelists": [
+    {
+      "name": "Default",
+      "files": [
+        "app/app/epics/[id]/page.tsx",
+        "package-lock.json",
+        ".vscode/changelists.json",
+        "eslint.config.mjs",
+        "lib/utils.ts",
+        "app/api/redmine/issue/route.ts",
+        "app/api/redmine/sprints/route.ts",
+        "lib/api/sprint.ts",
+        "components/app-sidebar.tsx",
+        "components/sprint-list.tsx",
+        "components/nav-main.tsx",
+        "app/app/sprints/[id]/page.tsx",
+        "app/api/redmine/issue/[id]/route.ts",
+        "app/api/redmine/stories/route.ts",
+        "app/api/redmine/sprints/[id]/route.ts",
+        "components/timelogModal.tsx",
+        "app/api/redmine/tasks/route.ts",
+        "components/story-card.tsx",
+        "lib/api/time.ts",
+        "story.json",
+        "story.md",
+        "lib/api/task.ts",
+        "lib/api/story.ts",
+        "components/addStoryModal.tsx",
+        "components/editTaskModal.tsx",
+        "Dockerfile",
+        "docker-compose.yml",
+        "hooks/.gitkeep",
+        "API_DOCUMENTATION.md",
+        "components/versionSprintModal.tsx"
+      ]
+    }
+  ],
+  "active": "Default"
+}

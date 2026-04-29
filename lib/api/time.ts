@@ -1,7 +1,7 @@
 import { api } from "./client"
 
-export const getTimeEntries = async (projectId: number, user_id: any = "me") => {
-    const res = await api.get(`/time_entries?project_id=${projectId}&user_id=${user_id}`)
+export const getTimeEntries = async (projectId: number, user_id: any = "me" ) => {
+    const res = await api.get(`/time_entries?project_id=${projectId}&user_id=${user_id}&limit=100`)
     return res?.data?.time_entries ?? []
 }
 
