@@ -44,6 +44,27 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
 
     const [category, setCategory] = useState("CODING")
 
+    // Attachments: each entry holds the File + an optional description
+    const [attachments, setAttachments] = useState<{ file: File; description: string }[]>([])
+
+    const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const picked = Array.from(e.target.files ?? [])
+        setAttachments(prev => [
+            ...prev,
+            ...picked.map(f => ({ file: f, description: f.name })),
+        ])
+        // reset input so the same file can be re-added after removal
+        e.target.value = ""
+    }
+
+    const removeAttachment = (idx: number) =>
+        setAttachments(prev => prev.filter((_, i) => i !== idx))
+
+    const updateDescription = (idx: number, val: string) =>
+        setAttachments(prev =>
+            prev.map((a, i) => (i === idx ? { ...a, description: val } : a))
+        )
+
     const selectedObj = options.find((s: any) => String(s.id) === selectedStatus)
     const required = TASK_RULES[selectedObj?.name] || []
 
@@ -82,26 +103,31 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
 
         const type = categoryMap[category]
 
-        await createTask({
-            tracker_id: 6,
-            parent_issue_id ,
-            project_id,
-            assigned_to_id,
-            subject,
-            description: desc,
-            status_id: selectedObj.id,
-            estimated_hours: Number(est),
-            remaining_hours: Number(rem),
-            start_date: startDate,
-            due_date: endDate,
-            custom_fields: [
-                { id: 13, value: category },
-                { id: 14, value: type },
-                { id: 15, value: String(rem) },
-                { id: 43, value: startDate },
-                { id: 44, value: endDate },
-            ],
-        })
+        const files = attachments
+
+        await createTask(
+            {
+                tracker_id: 6,
+                parent_issue_id,
+                project_id,
+                assigned_to_id,
+                subject,
+                description: desc,
+                status_id: selectedObj.id,
+                estimated_hours: Number(est),
+                remaining_hours: Number(rem),
+                start_date: startDate,
+                due_date: endDate,
+                custom_fields: [
+                    { id: 13, value: category },
+                    { id: 14, value: type },
+                    { id: 15, value: String(rem) },
+                    { id: 43, value: startDate },
+                    { id: 44, value: endDate },
+                ],
+            },
+            files,
+        )
 
         mutate(["tasks", parent_issue_id])
         setOpen(false)
@@ -117,6 +143,7 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
         setDoneRatio(0)
         setSelectedStatus(String(currentStatus.id))
         setCategory("CODING")
+        setAttachments([])
     }
 
     return (
@@ -211,6 +238,47 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
                     <div className="space-y-1">
                         <div className="text-[10px] opacity-60">End Date</div>
                         <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-8 text-xs" />
+                    </div>
+
+                    {/* ── Attachments ── */}
+                    <div className="col-span-3 space-y-2">
+                        <div className="text-[10px] opacity-60">Attachments</div>
+
+                        <Input
+                            type="file"
+                            multiple
+                            className="h-8 text-xs cursor-pointer"
+                            onChange={handleFilesChange}
+                        />
+
+                        {attachments.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                                {attachments.map((a, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-[10px] text-muted-foreground truncate mb-0.5">
+                                                {a.file.name}
+                                            </div>
+                                            <Input
+                                                value={a.description}
+                                                onChange={(e) => updateDescription(idx, e.target.value)}
+                                                placeholder="Description (optional)"
+                                                className="h-7 text-[10px]"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-[10px] text-destructive hover:text-destructive"
+                                            onClick={() => removeAttachment(idx)}
+                                        >
+                                            ✕
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                 </div>

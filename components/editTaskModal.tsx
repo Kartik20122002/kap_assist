@@ -52,6 +52,7 @@ export default function EditTaskDialog({ task, taskTime }: any) {
         task.custom_fields?.find((f: any) => f.id === 13)?.value || "CODING"
     )
 
+
     const selectedObj = options.find((s: any) => String(s.id) === selectedStatus)
     const required = TASK_RULES[selectedObj?.name] || []
 

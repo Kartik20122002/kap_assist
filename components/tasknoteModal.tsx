@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { updateTask } from "@/lib/api/task"
+import { uploadAttachments } from "@/lib/api/file"
 
-export default function TaskNoteDialog({ taskId, notes = [] }: any) {
+export default function TaskNoteDialog({ taskId }: any) {
     const today = new Date().toISOString().split("T")[0]
 
     const [open, setOpen] = useState(false)
@@ -15,6 +16,27 @@ export default function TaskNoteDialog({ taskId, notes = [] }: any) {
     const [update, setUpdate] = useState("")
     const [tomorrow, setTomorrow] = useState("")
     const [blockers, setBlockers] = useState("")
+
+    // Attachments: each entry holds the File + an optional description
+    const [attachments, setAttachments] = useState<{ file: File; description: string }[]>([])
+
+    const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const picked = Array.from(e.target.files ?? [])
+        setAttachments(prev => [
+            ...prev,
+            ...picked.map(f => ({ file: f, description: f.name })),
+        ])
+        // reset so the same file can be picked again after removal
+        e.target.value = ""
+    }
+
+    const removeAttachment = (idx: number) =>
+        setAttachments(prev => prev.filter((_, i) => i !== idx))
+
+    const updateDescription = (idx: number, val: string) =>
+        setAttachments(prev =>
+            prev.map((a, i) => (i === idx ? { ...a, description: val } : a))
+        )
 
     const buildNote = () => {
         return `
@@ -29,11 +51,23 @@ export default function TaskNoteDialog({ taskId, notes = [] }: any) {
 
     const handleSubmit = async () => {
         const notes = buildNote()
-        await updateTask(taskId, { notes })
+
+        // Upload any attached files first, then include their tokens in the note update
+        let uploads: any[] = []
+        if (attachments.length > 0) {
+            uploads = await uploadAttachments(attachments)
+        }
+
+        await updateTask(taskId, {
+            notes,
+            ...(uploads.length > 0 ? { uploads } : {}),
+        })
+
         setOpen(false)
         setUpdate("")
         setTomorrow("")
         setBlockers("")
+        setAttachments([])
     }
 
     return (
@@ -83,7 +117,48 @@ export default function TaskNoteDialog({ taskId, notes = [] }: any) {
                     className="text-xs"
                 />
 
-                <Button onClick={handleSubmit} className="h-8 text-xs">
+                {/* ── Attachments ── */}
+                <div className="space-y-2">
+                    <div className="text-[10px] opacity-60">Attachments</div>
+
+                    <Input
+                        type="file"
+                        multiple
+                        className="h-8 text-xs cursor-pointer"
+                        onChange={handleFilesChange}
+                    />
+
+                    {attachments.length > 0 && (
+                        <div className="space-y-2">
+                            {attachments.map((a, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[10px] text-muted-foreground truncate mb-0.5">
+                                            {a.file.name}
+                                        </div>
+                                        <Input
+                                            value={a.description}
+                                            onChange={(e) => updateDescription(idx, e.target.value)}
+                                            placeholder="Description (optional)"
+                                            className="h-7 text-[10px]"
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 text-[10px] text-destructive hover:text-destructive"
+                                        onClick={() => removeAttachment(idx)}
+                                    >
+                                        ✕
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <Button onClick={handleSubmit} className="h-8 text-xs w-full">
                     Save Note
                 </Button>
             </DialogContent>
