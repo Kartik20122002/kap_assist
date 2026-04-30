@@ -16,6 +16,7 @@ import {
 import { updateTask } from "@/lib/api/task"
 import { mutate } from "swr"
 import { getNextTaskStatuses, TASK_RULES } from "@/lib/utils"
+import { toast } from "sonner"
 
 const categoryMap: any = {
     CODING: "WORK",
@@ -95,7 +96,7 @@ export default function EditTaskDialog({ task, taskTime }: any) {
 
         const error = validate()
         if (error) {
-            alert(error) // simple for now
+            toast.error(error)
             return
         }
 
@@ -106,26 +107,34 @@ export default function EditTaskDialog({ task, taskTime }: any) {
 
         const type = categoryMap[category]
 
-        await updateTask(task.id, {
-            subject,
-            description: desc,
-            status_id: selectedObj.id,
-            estimated_hours: Number(est),
-            remaining_hours: Number(rem),
-            done_ratio: Number(doneRatio),
-            start_date: startDate || undefined,
-            due_date: endDate || undefined,
-            custom_fields: [
-                { id: 13, value: category },
-                { id: 14, value: type },
-                { id: 15, value: String(rem) },
-                { id: 43, value: startDate || "" },
-                { id: 44, value: endDate || "" },
-            ],
-        })
-
-        mutate(["tasks", task.parent?.id])
-        setOpen(false)
+        toast.promise(
+            updateTask(task.id, {
+                subject,
+                description: desc,
+                status_id: selectedObj.id,
+                estimated_hours: Number(est),
+                remaining_hours: Number(rem),
+                done_ratio: Number(doneRatio),
+                start_date: startDate || undefined,
+                due_date: endDate || undefined,
+                custom_fields: [
+                    { id: 13, value: category },
+                    { id: 14, value: type },
+                    { id: 15, value: String(rem) },
+                    { id: 43, value: startDate || "" },
+                    { id: 44, value: endDate || "" },
+                ],
+            }),
+            {
+                loading: "Saving task…",
+                success: () => {
+                    mutate(["tasks", task.parent?.id])
+                    setOpen(false)
+                    return "Task updated"
+                },
+                error: (err) => err?.message ?? "Failed to update task",
+            }
+        )
     }
 
     const handleReset = () => {

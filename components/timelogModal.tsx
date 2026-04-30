@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { createTimeEntry } from "@/lib/api/time"
 import { mutate } from "swr"
+import { toast } from "sonner"
 
 const categoryMap: any = {
   CODING: "WORK",
@@ -33,23 +34,27 @@ export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: a
   const [category, setCategory] = useState("CODING")
 
   const handleSubmit = async () => {
+    if (!hours || Number(hours) <= 0) {
+      toast.error("Enter valid hours (must be > 0)")
+      return
+    }
+
     const type = categoryMap[category]
 
-    await createTimeEntry(
-      taskId,
-      date,
-      Number(hours),
-      comments,
-      category,
-      type
+    toast.promise(
+      createTimeEntry(taskId, date, Number(hours), comments, category, type),
+      {
+        loading: "Logging time…",
+        success: () => {
+          mutate(key => Array.isArray(key) && key[0] === "time_entries")
+          setOpen(false)
+          setHours("")
+          setComments("")
+          return `${hours}h logged (${category})`
+        },
+        error: (err) => err?.message ?? "Failed to log time",
+      }
     )
-
-    // 🔥 refresh time entries
-    mutate(key => Array.isArray(key) && key[0] === "time_entries")
-
-    setOpen(false)
-    setHours("")
-    setComments("")
   }
 
   const handleReset = async () => {

@@ -1,5 +1,4 @@
 "use client"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import useSWR from "swr"
@@ -10,6 +9,8 @@ import TaskNoteDialog from "./tasknoteModal"
 import { ApiConfig, statusStyles } from "@/lib/utils"
 import EditTaskDialog from "./editTaskModal"
 import CreateTaskDialog from "./addTaskModel"
+import { useEffect } from "react"
+import { toast } from "sonner"
 
 export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any }) {
   const storyPoints =
@@ -51,6 +52,54 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     tasks?.reduce((sum: number, task: any) => {
       return sum + (timeMap[task.id] || 0)
     }, 0) || 0
+
+  const today = new Date().toISOString().split("T")[0]
+  const OPEN_STATUSES = ["New", "Assigned", "In Progress", "Ready for Testing"]
+  const CLOSED_STATUSES = ["Closed", "Implemented", "Rejected"]
+
+  // A1 — Story has no tasks
+  useEffect(() => {
+    if (tasks !== undefined && tasks.length === 0) {
+      toast.warning(`No tasks yet for "${story.subject}"`, {
+        id: `story-${story.id}-no-tasks`,
+        description: "Add at least one task so work can be tracked and time logged.",
+      })
+    }
+  }, [tasks])
+
+  // A2 — Story has logged time but status is still New / Assigned
+  useEffect(() => {
+    if (storyTime > 0 && ["New", "Assigned"].includes(story.status?.name)) {
+      toast.warning(`"${story.subject}" has ${storyTime}h logged but is still "${story.status?.name}"`, {
+        id: `story-${story.id}-stale-status`,
+        description: "Consider moving this story to In Progress.",
+      })
+    }
+  }, [storyTime, story.status?.name])
+
+  // A3 — Story is overdue
+  useEffect(() => {
+    if (
+      story.due_date &&
+      story.due_date < today &&
+      !CLOSED_STATUSES.includes(story.status?.name)
+    ) {
+      toast.error(`"${story.subject}" is past due (${story.due_date})`, {
+        id: `story-${story.id}-overdue`,
+        description: "Update the due date or close this story.",
+      })
+    }
+  }, [story.due_date, story.status?.name])
+
+  // A10 — Story has no acceptance criteria
+  useEffect(() => {
+    if (!acceptance && !CLOSED_STATUSES.includes(story.status?.name)) {
+      toast.warning(`"${story.subject}" has no acceptance criteria`, {
+        id: `story-${story.id}-no-ac`,
+        description: "Acceptance criteria are required before moving to Ready.",
+      })
+    }
+  }, [acceptance, story.status?.name])
 
   return (
     <Card className="bg-muted/40 transition">
@@ -132,6 +181,42 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 }
 
 const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
+  const today = new Date().toISOString().split("T")[0]
+
+  // A4 — Task exceeded estimated hours
+  useEffect(() => {
+    if (task.estimated_hours > 0 && taskTime > task.estimated_hours) {
+      toast.warning(`"${task.subject}" exceeded estimate (${taskTime}h / ${task.estimated_hours}h)`, {
+        id: `task-${task.id}-over-budget`,
+        description: "Consider re-estimating or discussing with the team.",
+      })
+    }
+  }, [taskTime, task.estimated_hours])
+
+  // A5 — Task has logged time but status is still New / Assigned
+  useEffect(() => {
+    if (taskTime > 0 && ["New", "Assigned"].includes(task.status?.name)) {
+      toast.warning(`Task "${task.subject}" has ${taskTime}h logged but is still "${task.status?.name}"`, {
+        id: `task-${task.id}-stale-status`,
+        description: "Update the task status to In Progress.",
+      })
+    }
+  }, [taskTime, task.status?.name])
+
+  // A6 — Task is overdue
+  useEffect(() => {
+    if (
+      task.due_date &&
+      task.due_date < today &&
+      !["Completed", "Closed"].includes(task.status?.name)
+    ) {
+      toast.error(`Task "${task.subject}" is past due (${task.due_date})`, {
+        id: `task-${task.id}-overdue`,
+        description: "Update the due date or close this task.",
+      })
+    }
+  }, [task.due_date, task.status?.name])
+
   return (
     <div
       key={task.id}

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { updateTask } from "@/lib/api/task"
 import { uploadAttachments } from "@/lib/api/file"
+import { toast } from "sonner"
 
 export default function TaskNoteDialog({ taskId }: any) {
     const today = new Date().toISOString().split("T")[0]
@@ -52,22 +53,29 @@ export default function TaskNoteDialog({ taskId }: any) {
     const handleSubmit = async () => {
         const notes = buildNote()
 
-        // Upload any attached files first, then include their tokens in the note update
         let uploads: any[] = []
         if (attachments.length > 0) {
             uploads = await uploadAttachments(attachments)
         }
 
-        await updateTask(taskId, {
-            notes,
-            ...(uploads.length > 0 ? { uploads } : {}),
-        })
-
-        setOpen(false)
-        setUpdate("")
-        setTomorrow("")
-        setBlockers("")
-        setAttachments([])
+        toast.promise(
+            updateTask(taskId, {
+                notes,
+                ...(uploads.length > 0 ? { uploads } : {}),
+            }),
+            {
+                loading: "Adding note…",
+                success: () => {
+                    setOpen(false)
+                    setUpdate("")
+                    setTomorrow("")
+                    setBlockers("")
+                    setAttachments([])
+                    return "Note added"
+                },
+                error: (err) => err?.message ?? "Failed to add note",
+            }
+        )
     }
 
     return (

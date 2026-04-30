@@ -19,8 +19,9 @@ import {
 import { getCurrentUser } from "@/lib/api/user"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { ApiConfig } from "@/lib/utils"
+import { toast } from "sonner"
 import { getSprintById } from "@/lib/api/sprint"
 import CreateStoryDialog from "@/components/addStoryModal"
 import { getStoriesBySprint } from "@/lib/api/story"
@@ -55,6 +56,28 @@ export default function SprintPage() {
   const isAdmin = roles?.some((role: { id: number }) => role.id == 6)
 
   const { data: userStories } = useSWR(id ? ["sprintStories", id, isAdmin] : null, () => getStoriesBySprint(Number(id), projectId, isAdmin), ApiConfig);
+
+  const today = new Date().toISOString().split("T")[0]
+
+  // A7 — Sprint is overdue but still open
+  useEffect(() => {
+    if (version?.due_date && version.due_date < today && version.status === "open") {
+      toast.error(`Sprint "${version.name}" is past its due date (${version.due_date})`, {
+        id: `sprint-${version.id}-overdue`,
+        description: isAdmin ? "Consider closing or extending this sprint." : "Contact your admin to close or extend this sprint.",
+      })
+    }
+  }, [version?.due_date, version?.status])
+
+  // A8 — Sprint has no stories
+  useEffect(() => {
+    if (userStories !== undefined && userStories.length === 0) {
+      toast.warning(`No stories assigned to sprint "${version?.name}"`, {
+        id: `sprint-${version?.id}-no-stories`,
+        description: "Add user stories to start planning work for this sprint.",
+      })
+    }
+  }, [userStories])
 
   const users = [...new Set(userStories?.map((us: any) => us?.assigned_to?.name))]
   const [showUsers, setShowUsers] = useState([`${user?.firstname} ${user?.lastname}`])

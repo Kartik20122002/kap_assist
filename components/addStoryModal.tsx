@@ -18,6 +18,7 @@ import { getEpics } from "@/lib/api/epic"
 import { mutate } from "swr"
 import useSWR from "swr"
 import { ApiConfig } from "@/lib/utils"
+import { toast } from "sonner"
 
 const FIBONACCI_POINTS = [1, 2, 3, 5, 8, 13]
 
@@ -57,7 +58,7 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
     const handleSubmit = async () => {
         const error = validate()
         if (error) {
-            alert(error)
+            toast.error(error)
             return
         }
 
@@ -87,15 +88,20 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
             issuePayload.parent_issue_id = Number(parentEpicId)
         }
 
-        const success = await createStory(issuePayload)
-
-        if (success) {
-            mutate(["sprintStories", sprintId])
-            handleReset()
-            setOpen(false)
-        } else {
-            alert("Failed to create story")
-        }
+        toast.promise(
+            createStory(issuePayload),
+            {
+                loading: "Creating story…",
+                success: (ok) => {
+                    if (!ok) throw new Error("Story creation failed")
+                    mutate(["sprintStories", sprintId])
+                    handleReset()
+                    setOpen(false)
+                    return "Story created"
+                },
+                error: (err) => err?.message ?? "Failed to create story",
+            }
+        )
     }
 
     const handleReset = () => {

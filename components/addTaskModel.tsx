@@ -15,6 +15,7 @@ import {
 import { createTask } from "@/lib/api/task"
 import { mutate } from "swr"
 import { getNextTaskStatuses, TASK_RULES } from "@/lib/utils"
+import { toast } from "sonner"
 
 const categoryMap: any = {
     CODING: "WORK",
@@ -97,7 +98,7 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
     const handleSubmit = async () => {
         const error = validate()
         if (error) {
-            alert(error)
+            toast.error(error)
             return
         }
 
@@ -105,32 +106,41 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
 
         const files = attachments
 
-        await createTask(
+        toast.promise(
+            createTask(
+                {
+                    tracker_id: 6,
+                    parent_issue_id,
+                    project_id,
+                    assigned_to_id,
+                    subject,
+                    description: desc,
+                    status_id: selectedObj.id,
+                    estimated_hours: Number(est),
+                    remaining_hours: Number(rem),
+                    start_date: startDate,
+                    due_date: endDate,
+                    custom_fields: [
+                        { id: 13, value: category },
+                        { id: 14, value: type },
+                        { id: 15, value: String(rem) },
+                        { id: 43, value: startDate },
+                        { id: 44, value: endDate },
+                    ],
+                },
+                files,
+            ),
             {
-                tracker_id: 6,
-                parent_issue_id,
-                project_id,
-                assigned_to_id,
-                subject,
-                description: desc,
-                status_id: selectedObj.id,
-                estimated_hours: Number(est),
-                remaining_hours: Number(rem),
-                start_date: startDate,
-                due_date: endDate,
-                custom_fields: [
-                    { id: 13, value: category },
-                    { id: 14, value: type },
-                    { id: 15, value: String(rem) },
-                    { id: 43, value: startDate },
-                    { id: 44, value: endDate },
-                ],
-            },
-            files,
+                loading: "Creating task…",
+                success: (ok) => {
+                    if (!ok) throw new Error("Task creation failed")
+                    mutate(["tasks", parent_issue_id])
+                    setOpen(false)
+                    return "Task created"
+                },
+                error: (err) => err?.message ?? "Failed to create task",
+            }
         )
-
-        mutate(["tasks", parent_issue_id])
-        setOpen(false)
     }
 
     const handleReset = () => {

@@ -16,6 +16,7 @@ import {
 import { createVersion, updateVersion } from "@/lib/api/sprint"
 import { mutate } from "swr"
 import { IconPlus, IconEdit } from "@tabler/icons-react"
+import { toast } from "sonner"
 
 interface VersionSprintModalProps {
     projectId: number
@@ -63,13 +64,10 @@ export default function VersionSprintModal({
     const [description, setDescription] = useState(version?.description || "")
     const [status, setStatus] = useState(version?.status || "open")
     const [dueDate, setDueDate] = useState(version?.due_date || "")
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
     // Reset form when modal opens/closes
     useEffect(() => {
         if (!open) {
-            setError(null)
         } else if (mode === "update" && version) {
             setName(version.name)
             setDescription(version.description || "")
@@ -96,45 +94,38 @@ export default function VersionSprintModal({
     /**
      * Handles form submission for both create and update operations
      */
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
         const due_validate = mode === "create"
         const validationError = validate(due_validate)
         if (validationError) {
-            setError(validationError)
+            toast.error(validationError)
             return
         }
 
-        setIsLoading(true)
-        setError(null)
-
-        try {
-            const versionData = {
-                name: name.trim(),
-                status,
-                ...(description && { description: description.trim() }),
-                ...(dueDate && { due_date: dueDate }),
-            }
-
-            if (mode === "create") {
-                await createVersion(projectId, versionData)
-                // Mutate the sprints list to refresh
-                mutate(["sprints", projectId])
-            } else if (mode === "update" && version) {
-                await updateVersion(version.id, versionData)
-                // Mutate both the sprint list and the specific sprint
-                mutate(["sprints", projectId])
-                mutate(["sprint", version.id])
-            }
-
-            setOpen(false)
-            handleReset()
-            onSuccess?.()
-        } catch (err) {
-            console.error("Error:", err)
-            setError(err instanceof Error ? err.message : "An error occurred")
-        } finally {
-            setIsLoading(false)
+        const versionData = {
+            name: name.trim(),
+            status,
+            ...(description && { description: description.trim() }),
+            ...(dueDate && { due_date: dueDate }),
         }
+
+        const operation =
+            mode === "create"
+                ? createVersion(projectId, versionData)
+                : updateVersion(version!.id, versionData)
+
+        toast.promise(operation, {
+            loading: mode === "create" ? "Creating sprint…" : "Updating sprint…",
+            success: () => {
+                mutate(["sprints", projectId])
+                if (mode === "update" && version) mutate(["sprint", version.id])
+                setOpen(false)
+                handleReset()
+                onSuccess?.()
+                return mode === "create" ? "Sprint created" : "Sprint updated"
+            },
+            error: (err) => err?.message ?? "Failed to save sprint",
+        })
     }
 
     /**
@@ -152,7 +143,6 @@ export default function VersionSprintModal({
             setStatus(version.status)
             setDueDate(version.due_date || "")
         }
-        setError(null)
     }
 
     return (
@@ -181,12 +171,6 @@ export default function VersionSprintModal({
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4">
-                    {/* Error Message */}
-                    {error && (
-                        <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-3">
-                            {error}
-                        </div>
-                    )}
 
                     {/* Name - Required */}
                     <div className="space-y-1">
@@ -198,7 +182,6 @@ export default function VersionSprintModal({
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g., v1.0.0 or Sprint 1"
                             className="h-8 text-xs"
-                            disabled={isLoading}
                         />
                     </div>
 
@@ -210,7 +193,6 @@ export default function VersionSprintModal({
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Add version/sprint description (optional)"
                             className="text-xs h-24 resize-none overflow-auto"
-                            disabled={isLoading}
                         />
                     </div>
 
@@ -220,7 +202,7 @@ export default function VersionSprintModal({
                             Status <span className="text-red-500">*</span>
                         </div>
                         {/* @ts-expect-error */}
-                        <Select value={status} onValueChange={setStatus} disabled={isLoading}>
+                        <Select value={status} onValueChange={setStatus}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue />
                             </SelectTrigger>
@@ -240,7 +222,6 @@ export default function VersionSprintModal({
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
                             className="h-8 text-xs"
-                            disabled={isLoading}
                         />
                     </div>
                 </div>
@@ -251,16 +232,14 @@ export default function VersionSprintModal({
                         variant="outline"
                         onClick={handleReset}
                         className="h-8 text-xs"
-                        disabled={isLoading}
                     >
                         Reset
                     </Button>
                     <Button
                         onClick={handleSubmit}
                         className="h-8 text-xs"
-                        disabled={isLoading}
                     >
-                        {isLoading ? "Saving..." : mode === "create" ? "Create Sprint" : "Update Sprint"}
+                        {mode === "create" ? "Create Sprint" : "Update Sprint"}
                     </Button>
                 </div>
             </DialogContent>

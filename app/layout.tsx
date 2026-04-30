@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
 import InitAuth from "./initAuth"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <TooltipProvider>
             <InitAuth />
             {children}
+            <Toaster richColors position="top-right" />
         </TooltipProvider>
         </ThemeProvider>
       </body>

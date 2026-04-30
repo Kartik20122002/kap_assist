@@ -29,6 +29,8 @@ import { getTimeEntries } from "@/lib/api/time"
 import { ApiConfig } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { SprintList } from "@/components/sprint-list"
+import { useEffect } from "react"
+import { toast } from "sonner"
 
 
 
@@ -97,10 +99,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ?? []
 
 
-
-  const { data: time_entries } = useSWR((selectedProject?.id && user?.id) ? ["time_entries", selectedProject.id, user?.id] : null, () =>
-    getTimeEntries(selectedProject?.id, user?.id), ApiConfig
+  const { data: time_entries } = useSWR(
+    (selectedProject?.id && user?.id) ? ["time_entries", selectedProject.id, user?.id] : null,
+    () => getTimeEntries(selectedProject?.id, user?.id),
+    ApiConfig
   )
+
+  // A9 — Today's timelog is under 9 hours (warn at end of day ≥ 17:00)
+  useEffect(() => {
+    if (!time_entries || !user) return
+    const currentHour = new Date().getHours()
+    if (currentHour < 17) return  // only warn after 5pm
+
+    const today = new Date().toISOString().split("T")[0]
+    const todayHours = time_entries
+      .filter((t: any) => t.spent_on === today)
+      .reduce((sum: number, t: any) => sum + t.hours, 0)
+
+    if (todayHours < 9) {
+      toast.warning(`You've only logged ${todayHours}h today`, {
+        id: "timelog-today",
+        description: "Don't forget to fill your timesheet before you wrap up!",
+        duration: 8000,
+      })
+    }
+  }, [time_entries])
 
   // Calculate if user is admin for the selected project
   const isAdmin = React.useMemo(() => {
