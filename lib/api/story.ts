@@ -20,7 +20,7 @@ export const createStory = async (issue: any) => {
     }
 }
 
-export const updateStory = async (issue_id: number, updates: any) => {
+export const updateStory = async (issue_id: Number, updates: any) => {
     try {
         await api.put(`/issue/${issue_id}`, {
             issue: updates

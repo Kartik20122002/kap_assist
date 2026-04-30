@@ -34,23 +34,23 @@ export function NavMain({
     .slice(0, 7)
 
   return (<>
-      <SidebarGroup className="bg-accent/20 rounded-t-sm border border-b-0 border-accent">
-        <SidebarGroupLabel>Recent Timelogs</SidebarGroupLabel>
-        <SidebarMenu>
-          {grouped.map((item: any) => (
-            <SidebarMenuItem key={item.date}>
-              <SidebarMenuButton tooltip={item?.date} className="justify-between">
-                <span className="text-nowrap">
-                  {item.hours}h
-                </span>
-                <span className="text-xs opacity-70">
-                  {item.date}
-                </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
+    <SidebarGroup className="bg-accent/20 rounded-t-sm border border-b-0 border-accent">
+      <SidebarGroupLabel>Your Recent Timelogs</SidebarGroupLabel>
+      <SidebarMenu>
+        {grouped.map((item: any) => (
+          <SidebarMenuItem key={item.date}>
+            <SidebarMenuButton tooltip={item?.date} className="justify-between">
+              <span className="text-nowrap">
+                {item.hours}h
+              </span>
+              <span className="text-xs opacity-70">
+                {item.date}
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
 
-    </>)
+  </>)
 }

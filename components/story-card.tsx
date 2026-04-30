@@ -1,6 +1,5 @@
 "use client"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import useSWR from "swr"
 import { getTasks } from "@/lib/api/task"
 import { getTimeEntries } from "@/lib/api/time"
@@ -9,6 +8,7 @@ import TaskNoteDialog from "./tasknoteModal"
 import { ApiConfig, statusStyles } from "@/lib/utils"
 import EditTaskDialog from "./editTaskModal"
 import CreateTaskDialog from "./addTaskModel"
+import EditStoryDialog from "./editStoryModal"
 import { useEffect } from "react"
 import { toast } from "sonner"
 
@@ -115,9 +115,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
             <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />
 
 
-            <Button size="sm" variant="default" className="h-6 text-[10px] px-2">
-              Update
-            </Button>
+            <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />
             <span className={`px-2 rounded-full ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
           </div>
         </div>
