@@ -40,7 +40,7 @@ components/
   versionSprintModal.tsx  create/edit sprint (version) dialog
 lib/
   api/
-    client.ts        axios instance (baseURL=/api/redmine, injects x-api-key)
+    client.ts        axios instance (baseURL=/redmine, injects x-api-key)
     project.ts       getProjects, getProjectById, getProjetEpics
     epic.ts          getEpics, getEpicById, getStoriesByEpicId
     sprint.ts        getSprints, getSprintById, createVersion, updateVersion
@@ -60,7 +60,7 @@ store/
 ```
 Browser Component
   └─ useSWR(key, lib/api/xxx.ts fn)
-       └─ axios (lib/api/client.ts)  →  /api/redmine/...  (Next.js route handler)
+       └─ axios (lib/api/client.ts)  →  /redmine/...  (Next.js route handler)
             └─ fetch()  →  https://kap01.kpit.com/kap/...  (Redmine REST API)
 ```
 
@@ -72,21 +72,21 @@ The Next.js API routes act as a **server-side proxy**, forwarding the `x-api-key
 
 | Next.js Route | HTTP | Redmine Endpoint | Notes |
 |---|---|---|---|
-| `/api/redmine/projects` | GET | `GET /projects.json` | List all projects |
-| `/api/redmine/projects/[id]` | GET | `GET /projects/:id.json?include=trackers,issue_categories,time_entry_activities` | |
-| `/api/redmine/epics` | GET | `GET /issues.json?tracker_id=4&project_id=` | tracker_id=4 = Epic |
-| `/api/redmine/sprints` | GET | `GET /projects/:id/versions.json` | Redmine versions = sprints |
-| `/api/redmine/sprints` | POST | `POST /projects/:id/versions.json` | body: `{version:{name,status,due_date,...}}` |
-| `/api/redmine/sprints/[id]` | GET | `GET /versions/:id.json` | |
-| `/api/redmine/sprints/[id]` | PUT | `PUT /versions/:id.json` | body: `{version:{...}}` |
-| `/api/redmine/issue` | POST | `POST /issues.json` | Create story or task |
-| `/api/redmine/issue/[id]` | GET | `GET /issues/:id.json?include=children,journals,relations,allowed_statuses` | |
-| `/api/redmine/issue/[id]` | PUT | `PUT /issues/:id.json` | body: `{issue:{...}}` |
-| `/api/redmine/stories` | GET | `GET /issues.json?tracker_id=5&include=relations&status_id=*` | tracker_id=5 = User Story |
-| `/api/redmine/tasks` | GET | `GET /issues.json?tracker_id=6&status_id=*&parent_id=&include=journals` | tracker_id=6 = Task |
-| `/api/redmine/time_entries` | GET | `GET /time_entries.json?user_id=&project_id=` | |
-| `/api/redmine/time_entries` | POST | `POST /time_entries.json` | body: `{time_entry:{...}}` |
-| `/api/redmine/users` | GET | `GET /users/current.json?include=memberships,groups` | |
+| `/redmine/projects` | GET | `GET /projects.json` | List all projects |
+| `/redmine/projects/[id]` | GET | `GET /projects/:id.json?include=trackers,issue_categories,time_entry_activities` | |
+| `/redmine/epics` | GET | `GET /issues.json?tracker_id=4&project_id=` | tracker_id=4 = Epic |
+| `/redmine/sprints` | GET | `GET /projects/:id/versions.json` | Redmine versions = sprints |
+| `/redmine/sprints` | POST | `POST /projects/:id/versions.json` | body: `{version:{name,status,due_date,...}}` |
+| `/redmine/sprints/[id]` | GET | `GET /versions/:id.json` | |
+| `/redmine/sprints/[id]` | PUT | `PUT /versions/:id.json` | body: `{version:{...}}` |
+| `/redmine/issue` | POST | `POST /issues.json` | Create story or task |
+| `/redmine/issue/[id]` | GET | `GET /issues/:id.json?include=children,journals,relations,allowed_statuses` | |
+| `/redmine/issue/[id]` | PUT | `PUT /issues/:id.json` | body: `{issue:{...}}` |
+| `/redmine/stories` | GET | `GET /issues.json?tracker_id=5&include=relations&status_id=*` | tracker_id=5 = User Story |
+| `/redmine/tasks` | GET | `GET /issues.json?tracker_id=6&status_id=*&parent_id=&include=journals` | tracker_id=6 = Task |
+| `/redmine/time_entries` | GET | `GET /time_entries.json?user_id=&project_id=` | |
+| `/redmine/time_entries` | POST | `POST /time_entries.json` | body: `{time_entry:{...}}` |
+| `/redmine/users` | GET | `GET /users/current.json?include=memberships,groups` | |
 
 ---
 
@@ -179,9 +179,9 @@ Rules:
 
 ## Key Observations / Gaps to Note for New Features
 
-1. **`/api/redmine/issue` POST** is shared for both stories and tasks — distinguished by `tracker_id` in the payload.
-2. **`createStory` / `createTask`** both call `POST /api/redmine/issue` — no separate endpoints.
-3. **`updateStory` / `updateTask`** both call `PUT /api/redmine/issue/[id]`.
+1. **`/redmine/issue` POST** is shared for both stories and tasks — distinguished by `tracker_id` in the payload.
+2. **`createStory` / `createTask`** both call `POST /redmine/issue` — no separate endpoints.
+3. **`updateStory` / `updateTask`** both call `PUT /redmine/issue/[id]`.
 4. The **"Update" button** on `StoryCard` is currently a non-functional stub (no `onClick`).
 5. **Sprint status update** UI exists on `SprintPage` but no `onChange` handler is wired — it's display-only.
 6. **Epic status select** on `EpicPage` is similarly unconnected.

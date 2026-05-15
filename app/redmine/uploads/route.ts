@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 
 /**
- * POST /api/redmine/uploads
+ * POST /redmine/uploads
  *
  * Receives a single file as multipart/form-data (field name: "file"),
  * re-uploads it to Redmine as application/octet-stream, and returns the

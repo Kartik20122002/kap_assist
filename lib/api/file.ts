@@ -16,7 +16,7 @@ export interface UploadResult {
 /**
  * Uploads an array of attachments to Redmine one-by-one.
  *
- * Each file is POSTed to /api/redmine/uploads as multipart/form-data.
+ * Each file is POSTed to /redmine/uploads as multipart/form-data.
  * The route handler re-forwards the raw bytes to Redmine as
  * application/octet-stream and returns the upload token.
  *

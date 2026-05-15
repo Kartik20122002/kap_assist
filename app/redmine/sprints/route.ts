@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 
 /**
- * GET /api/redmine/sprints
+ * GET /redmine/sprints
  * Fetches all versions/sprints for a project
  * 
  * Query params:
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/redmine/sprints
+ * POST /redmine/sprints
  * Creates a new version/sprint in a project
  * 
  * Query params:
