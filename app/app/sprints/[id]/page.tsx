@@ -24,8 +24,11 @@ import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
 import { getSprintById } from "@/lib/api/sprint"
 import CreateStoryDialog from "@/components/addStoryModal"
-import { getStoriesBySprint } from "@/lib/api/story"
+import { getStoriesBySprint, updateStory } from "@/lib/api/story"
 import VersionSprintModal from "@/components/versionSprintModal"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { mutate } from "swr"
 
 export function SwitchDemo() {
   return (
@@ -81,10 +84,43 @@ export default function SprintPage() {
 
   const users = [...new Set(userStories?.map((us: any) => us?.assigned_to?.name))]
   const [showUsers, setShowUsers] = useState([`${user?.firstname} ${user?.lastname}`])
+  const [closeStoriesOpen, setCloseStoriesOpen] = useState(false)
+  const [closingStories, setClosingStories] = useState(false)
 
   const toggleUr = (username: any) => {
     if (showUsers?.includes(username)) setShowUsers(showUsers?.filter(v => v !== username))
     else setShowUsers(v => [...v, username])
+  }
+
+  const visibleStories = userStories?.filter((story: any) =>
+    showUsers?.includes(story?.assigned_to?.name) ?? false
+  ) ?? []
+
+  const closeAllStories = async () => {
+    const today = new Date().toISOString().split("T")[0]
+    const openStories = visibleStories.filter(
+      (s: any) => s.status?.name !== "Closed"
+    )
+    if (openStories.length === 0) {
+      toast.info("No open stories to close")
+      setCloseStoriesOpen(false)
+      return
+    }
+
+    setClosingStories(true)
+    let closed = 0
+    for (const story of openStories) {
+      try {
+        await updateStory(story.id, { status_id: 5, due_date: story.due_date || today })
+        closed++
+      } catch {
+        toast.error(`Failed to close "${story.subject}"`)
+      }
+    }
+    mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(id))
+    setClosingStories(false)
+    setCloseStoriesOpen(false)
+    toast.success(`Closed ${closed} of ${openStories.length} stories`)
   }
 
   if (!data) return <div className="p-4">Loading...</div>
@@ -101,7 +137,7 @@ export default function SprintPage() {
             </CardTitle>
 
             <div className="flex flex-wrap gap-2 items-center">
-              <CreateStoryDialog projectId={projectId} sprintId={id} assignedToId={user?.id} />
+              {isAdmin && <CreateStoryDialog projectId={projectId} sprintId={id} assignedToId={user?.id} />}
               {isAdmin && (
                 <VersionSprintModal
                   projectId={projectId}
@@ -165,7 +201,19 @@ export default function SprintPage() {
       {/* CHILDREN TREE */}
       <Card className="bg-muted/40">
         <CardHeader>
-          <CardTitle className="text-sm">User Stories & Tasks</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <CardTitle className="text-sm">User Stories & Tasks</CardTitle>
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 px-3 text-xs self-start sm:self-auto"
+                onClick={() => setCloseStoriesOpen(true)}
+              >
+                Close All Stories
+              </Button>
+            )}
+          </div>
           {users && users?.length > 1 && <div className="flex flex-wrap gap-2">
             {users?.map((ur: any) => {
               return <Badge className="cursor-pointer" onClick={() => toggleUr(ur)} variant={showUsers?.includes(ur) ? "default" : "outline"} key={`user:${ur}`}>{ur as string}</Badge>
@@ -174,13 +222,33 @@ export default function SprintPage() {
         </CardHeader>
 
         <CardContent className="space-y-3">
-          {userStories?.filter((story: any) => {
-            return showUsers?.includes(story?.assigned_to?.name) ?? false
-          })?.map((story: any) => (
+          {visibleStories.map((story: any) => (
             <StoryCard key={story.id} story={story} isAdmin={isAdmin} />
           ))}
         </CardContent>
       </Card>
+
+      {/* Close All Stories confirmation */}
+      <Dialog open={closeStoriesOpen} onOpenChange={setCloseStoriesOpen}>
+        <DialogContent className="max-w-sm p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Close All Stories?</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            This will close <span className="font-semibold text-foreground">
+              {visibleStories.filter((s: any) => s.status?.name !== "Closed").length}
+            </span> open {visibleStories.filter((s: any) => s.status?.name !== "Closed").length === 1 ? "story" : "stories"} one by one. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" className="h-8 text-xs" onClick={() => setCloseStoriesOpen(false)} disabled={closingStories}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="h-8 text-xs" onClick={closeAllStories} disabled={closingStories}>
+              {closingStories ? "Closing…" : "Confirm"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

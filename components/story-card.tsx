@@ -1,7 +1,7 @@
 "use client"
 import { Card, CardContent } from "@/components/ui/card"
 import useSWR from "swr"
-import { getTasks } from "@/lib/api/task"
+import { getTasks, updateTask } from "@/lib/api/task"
 import { getTimeEntries } from "@/lib/api/time"
 import TimeLogDialog from "./timelogModal"
 import TaskNoteDialog from "./tasknoteModal"
@@ -9,8 +9,11 @@ import { ApiConfig, statusStyles } from "@/lib/utils"
 import EditTaskDialog from "./editTaskModal"
 import CreateTaskDialog from "./addTaskModel"
 import EditStoryDialog from "./editStoryModal"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { mutate } from "swr"
 
 export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any }) {
   const storyPoints =
@@ -101,6 +104,37 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     }
   }, [acceptance, story.status?.name])
 
+  const [closeTasksOpen, setCloseTasksOpen] = useState(false)
+  const [closingTasks, setClosingTasks] = useState(false)
+
+  const openTasks = tasks?.filter((t: any) => t.status?.name !== "Closed") ?? []
+
+  const closeAllTasks = async () => {
+    const today = new Date().toISOString().split("T")[0]
+    if (openTasks.length === 0) {
+      toast.info("No open tasks to close")
+      setCloseTasksOpen(false)
+      return
+    }
+    setClosingTasks(true)
+    let closed = 0
+    for (const task of openTasks) {
+      try {
+        await updateTask(task.id, {
+          status_id: 5,
+          due_date: task.due_date || today,
+        })
+        closed++
+      } catch {
+        toast.error(`Failed to close "${task.subject}"`)
+      }
+    }
+    mutate(["tasks", story.id])
+    setClosingTasks(false)
+    setCloseTasksOpen(false)
+    toast.success(`Closed ${closed} of ${openTasks.length} tasks`)
+  }
+
   return (
     <Card className="bg-muted/40 transition">
       <CardContent className="p-3 space-y-2">
@@ -113,8 +147,8 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             <span className={`px-2 rounded-full text-xs ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
-            <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />
-            <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />
+            {isAdmin && <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />}
+            {isAdmin && <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />}
           </div>
         </div>
 
@@ -154,6 +188,19 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
         {tasks?.length > 0 && (
           <div className="space-y-1 pt-1">
 
+            {isAdmin && openTasks.length > 0 && (
+              <div className="flex justify-end pb-1">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-6 px-3 text-[10px]"
+                  onClick={() => setCloseTasksOpen(true)}
+                >
+                  Close All Tasks
+                </Button>
+              </div>
+            )}
+
             {tasks.map((task: any) => {
               const taskTime = timeMap[task.id] || 0
               const taskHistory =
@@ -172,6 +219,26 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
         )}
 
       </CardContent>
+
+      {/* Close All Tasks confirmation */}
+      <Dialog open={closeTasksOpen} onOpenChange={setCloseTasksOpen}>
+        <DialogContent className="max-w-sm p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Close All Tasks?</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            This will close <span className="font-semibold text-foreground">{openTasks.length}</span> open {openTasks.length === 1 ? "task" : "tasks"} in <span className="font-semibold text-foreground">"{story.subject}"</span> one by one. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" className="h-8 text-xs" onClick={() => setCloseTasksOpen(false)} disabled={closingTasks}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="h-8 text-xs" onClick={closeAllTasks} disabled={closingTasks}>
+              {closingTasks ? "Closing…" : "Confirm"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
