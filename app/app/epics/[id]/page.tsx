@@ -82,31 +82,29 @@ export default function EpicPage() {
     )?.value
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
 
       {/* HEADER */}
       <Card className="bg-muted/40">
         <CardHeader className="space-y-2">
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
             <CardTitle className="text-lg">
               {data.subject}
             </CardTitle>
 
-            <div className="flex gap-2">
-              <div className="flex gap-2 items-center">
-                <Badge variant="outline">{data.priority?.name}</Badge>
+            <div className="flex flex-wrap gap-2 items-center">
+              <Badge variant="outline">{data.priority?.name}</Badge>
 
-                <Select>
-                  <SelectTrigger disabled={!isAdmin} className="h-7 text-xs w-30">
-                    <SelectValue placeholder={data.status?.name} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select>
+                <SelectTrigger disabled={!isAdmin} className="h-7 text-xs w-28">
+                  <SelectValue placeholder={data.status?.name} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

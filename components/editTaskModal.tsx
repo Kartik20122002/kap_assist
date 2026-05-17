@@ -158,7 +158,7 @@ export default function EditTaskDialog({ task, taskTime }: any) {
                 }
             />
 
-            <DialogContent className="min-w-3/5 p-6">
+            <DialogContent className="w-[95vw] sm:min-w-3/5 max-w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
 
                 <DialogHeader>
                     <DialogTitle className="text-sm">
@@ -166,14 +166,14 @@ export default function EditTaskDialog({ task, taskTime }: any) {
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
 
-                    <div className="space-y-1 col-span-3">
+                    <div className="space-y-1 col-span-full">
                         <div className="text-[10px] opacity-60">Subject</div>
                         <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="h-8 text-xs" />
                     </div>
 
-                    <div className="space-y-1 col-span-3">
+                    <div className="space-y-1 col-span-full">
                         <div className="text-[10px] opacity-60">Description</div>
                         <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="text-xs h-28" />
                     </div>

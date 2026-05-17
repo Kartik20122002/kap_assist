@@ -90,17 +90,17 @@ export default function SprintPage() {
   if (!data) return <div className="p-4">Loading...</div>
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
 
       {/* HEADER */}
       <Card className="bg-muted/40">
         <CardHeader className="space-y-2">
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
             <CardTitle className="text-lg">
               {version?.name}
             </CardTitle>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <CreateStoryDialog projectId={projectId} sprintId={id} assignedToId={user?.id} />
               {isAdmin && (
                 <VersionSprintModal
@@ -109,18 +109,16 @@ export default function SprintPage() {
                   version={version}
                 />
               )}
-              <div className="flex gap-2 items-center">
-                <Select value={version?.status ?? ""} disabled={!isAdmin}>
-                  <SelectTrigger disabled={!isAdmin} className="h-7 text-xs w-30">
-                    <SelectValue className={"capitalize"} placeholder={version?.status} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="locked">Locked</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={version?.status ?? ""} disabled={!isAdmin}>
+                <SelectTrigger disabled={!isAdmin} className="h-7 text-xs w-28">
+                  <SelectValue className={"capitalize"} placeholder={version?.status} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="locked">Locked</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -168,7 +166,7 @@ export default function SprintPage() {
       <Card className="bg-muted/40">
         <CardHeader>
           <CardTitle className="text-sm">User Stories & Tasks</CardTitle>
-          {users && users?.length > 1 && <div className="flex gap-2">
+          {users && users?.length > 1 && <div className="flex flex-wrap gap-2">
             {users?.map((ur: any) => {
               return <Badge className="cursor-pointer" onClick={() => toggleUr(ur)} variant={showUsers?.includes(ur) ? "default" : "outline"} key={`user:${ur}`}>{ur as string}</Badge>
             })}

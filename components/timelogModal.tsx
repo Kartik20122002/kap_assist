@@ -74,8 +74,8 @@ export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: a
         }
       />
 
-      <DialogContent className="p-4 space-y-3 max-w-full min-h-[70vh] min-w-11/12">
-        <div className="flex gap-4">
+      <DialogContent className="p-4 space-y-3 w-[95vw] sm:min-w-11/12 max-w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="space-y-3 grow">
             <DialogHeader>
               <DialogTitle className="text-sm">Log Time</DialogTitle>

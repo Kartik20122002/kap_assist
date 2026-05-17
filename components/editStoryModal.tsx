@@ -189,7 +189,7 @@ export default function EditStoryDialog({ story, sprintId }: EditStoryDialogProp
                 }
             />
 
-            <DialogContent className="max-w-full min-w-5/6 max-h-[90vh] overflow-y-auto p-6">
+            <DialogContent className="w-[95vw] sm:min-w-5/6 max-w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
                     <DialogTitle className="text-sm">Update User Story</DialogTitle>
                 </DialogHeader>
@@ -207,32 +207,32 @@ export default function EditStoryDialog({ story, sprintId }: EditStoryDialogProp
                         />
                     </div>
 
-                    <div className="flex items-start gap-2 w-full min-w-full grow">
+                    <div className="flex flex-col sm:flex-row items-start gap-2 w-full">
 
                         {/* Description */}
-                        <div className="basis-1/3 grow space-y-1">
+                        <div className="w-full sm:basis-1/2 sm:grow space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Description</div>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Enter story description"
-                                className="text-xs h-32 overflow-auto max-w-135 resize-none"
+                                className="text-xs h-28 sm:h-32 overflow-auto resize-none w-full"
                             />
                         </div>
 
                         {/* Acceptance Criteria */}
-                        <div className="basis-1/3 grow space-y-1">
+                        <div className="w-full sm:basis-1/2 sm:grow space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria *</div>
                             <Textarea
                                 value={acceptanceCriteria}
                                 onChange={(e) => setAcceptanceCriteria(e.target.value)}
                                 placeholder="Enter acceptance criteria"
-                                className="text-xs h-32 overflow-auto max-w-135 resize-none"
+                                className="text-xs h-28 sm:h-32 overflow-auto resize-none w-full"
                             />
                         </div>
                     </div>
 
-                    <div className="basis-1/3 grow flex flex-wrap gap-6 items-center justify-between">
+                    <div className="flex flex-wrap gap-4 sm:gap-6 items-start sm:items-center">
 
                         {/* Status */}
                         <div className="space-y-1">

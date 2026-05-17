@@ -106,22 +106,20 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
       <CardContent className="p-3 space-y-2">
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div className="text-base font-medium line-clamp-1">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+          <div className="text-base font-medium line-clamp-2 sm:line-clamp-1 min-w-0">
             {story.subject}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            <span className={`px-2 rounded-full text-xs ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
             <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />
-
-
             <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />
-            <span className={`px-2 rounded-full ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
           </div>
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-4 gap-x-2 gap-y-1 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-1 text-xs">
 
           <div>
             <span className="opacity-60">Assigned</span>
@@ -223,17 +221,17 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
 
       {/* Left */}
       <div className="flex-1 min-w-0">
-        <div className="text-base font-medium truncate-1">
+        <div className="text-base font-medium truncate">
           {task.subject}
         </div>
 
-        {/* 🔥 labeled row */}
-        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+        {/* labeled row */}
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-0.5">
 
           <span className={`px-2 text-xs rounded-full h-4 ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
 
           <div className="flex gap-1">
-            <span className="opacity-60">Estimated:</span>
+            <span className="opacity-60">Est:</span>
             <span>{task.estimated_hours || 0}h</span>
           </div>
 
@@ -248,7 +246,7 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-1 shrink-0">
+      <div className="flex gap-1 shrink-0 flex-wrap justify-end">
 
         <TimeLogDialog
           taskHistory={taskHistory}
