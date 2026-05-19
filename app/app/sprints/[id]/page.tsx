@@ -109,7 +109,7 @@ export default function SprintPage() {
       <Card className="bg-muted/40">
         {/* Always-visible collapsed row */}
         <div
-          className="flex items-center justify-between gap-2 px-3 py-3 sm:px-4 cursor-pointer sm:cursor-default"
+          className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 cursor-pointer sm:cursor-default"
           onClick={() => setHeaderExpanded(v => !v)}
         >
           <div className="flex items-center gap-2 min-w-0 flex-1">

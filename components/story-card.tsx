@@ -118,7 +118,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
   }
 
   return (
-    <div className="py-3 border-b border-border/15 last:border-b-0 sm:rounded-lg sm:border sm:border-border/40 sm:bg-muted/40 sm:py-0">
+    <div className="py-3 border-b border-border/30 last:border-b-0 sm:rounded-lg sm:border sm:border-border/40 sm:bg-muted/40 sm:py-0">
       <div className="sm:p-3 space-y-2">
 
         {/* Title row + admin icon actions */}
@@ -143,7 +143,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
           )}
         </div>
 
-        {/* Compact meta row */}
+        {/* Compact meta row — status · SP · time (no assignee, shown in filter) */}
         <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs">
           <span className={`px-2 py-0.5 rounded-full font-medium ${statusStyles[story?.status?.name]}`}>
             {story.status?.name}
@@ -155,24 +155,13 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
           <span className="text-muted-foreground">
             ⏱ <span className="text-foreground">{storyTime}h</span>
           </span>
-          <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground truncate max-w-[150px]">
-            {story.assigned_to?.name || "Unassigned"}
-          </span>
         </div>
 
-        {/* Acceptance criteria */}
-        {acceptance && (
-          <div className="text-[10px] text-muted-foreground bg-muted/50 rounded-md px-2 py-1 line-clamp-2 leading-relaxed">
-            {acceptance}
-          </div>
-        )}
-
-        {/* Task list */}
+        {/* Task list — separated by border-t */}
         {tasks?.length > 0 && (
-          <div className="space-y-1 border-t border-border/30 pt-1.5">
+          <div className="border-t border-border/25 pt-1">
             {isAdmin && openTasks.length > 0 && (
-              <div className="flex justify-end pb-0.5">
+              <div className="flex justify-end py-1">
                 <Button
                   size="sm"
                   variant="destructive"
@@ -183,24 +172,26 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
                 </Button>
               </div>
             )}
-            {tasks.map((task: any) => {
-              const taskTime = timeMap[task.id] || 0
-              const taskHistory =
-                time_entries
-                  ?.filter((t: any) => t.issue?.id === task.id)
-                  ?.sort((a: any, b: any) =>
-                    new Date(b.spent_on).getTime() - new Date(a.spent_on).getTime()
-                  ) || []
-              return (
-                <TaskCard
-                  key={`task:${task.id}`}
-                  projectId={story?.project?.id}
-                  task={task}
-                  taskTime={taskTime}
-                  taskHistory={taskHistory}
-                />
-              )
-            })}
+            <div className="divide-y divide-border/20">
+              {tasks.map((task: any) => {
+                const taskTime = timeMap[task.id] || 0
+                const taskHistory =
+                  time_entries
+                    ?.filter((t: any) => t.issue?.id === task.id)
+                    ?.sort((a: any, b: any) =>
+                      new Date(b.spent_on).getTime() - new Date(a.spent_on).getTime()
+                    ) || []
+                return (
+                  <TaskCard
+                    key={`task:${task.id}`}
+                    projectId={story?.project?.id}
+                    task={task}
+                    taskTime={taskTime}
+                    taskHistory={taskHistory}
+                  />
+                )
+              })}
+            </div>
           </div>
         )}
 
@@ -261,7 +252,7 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   }, [task.due_date, task.status?.name])
 
   return (
-    <div className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-background/50 border border-border/20 space-y-1">
+    <div className="py-2 sm:px-2 sm:py-2 space-y-1">
       {/* Title — full width, 2-line clamp */}
       <div className="text-xs font-medium leading-snug line-clamp-2">
         {task.subject}
