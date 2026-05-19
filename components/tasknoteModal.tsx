@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { updateTask } from "@/lib/api/task"
 import { uploadAttachments } from "@/lib/api/file"
 import { toast } from "sonner"
+import { IconNotes } from "@tabler/icons-react"
 
-export default function TaskNoteDialog({ taskId }: any) {
+export default function TaskNoteDialog({ taskId, iconOnly = false }: any) {
     const today = new Date().toISOString().split("T")[0]
 
     const [open, setOpen] = useState(false)
@@ -82,9 +83,15 @@ export default function TaskNoteDialog({ taskId }: any) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
+                  iconOnly ? (
+                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
+                      <IconNotes className="size-3.5" />
+                    </Button>
+                  ) : (
                     <Button size="sm" variant="outline" className="h-6 px-4 text-[10px]">
                         Note
                     </Button>
+                  )
                 }
             />
 

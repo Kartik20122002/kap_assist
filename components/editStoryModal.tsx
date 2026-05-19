@@ -21,15 +21,17 @@ import { mutate } from "swr"
 import useSWR from "swr"
 import { ApiConfig, US_FLOW, getNextUSStatuses } from "@/lib/utils"
 import { toast } from "sonner"
+import { IconAdjustments } from "@tabler/icons-react"
 
 const FIBONACCI_POINTS = [1, 2, 3, 5, 8, 13]
 
 interface EditStoryDialogProps {
     story: any
     sprintId: any
+    iconOnly?: boolean
 }
 
-export default function EditStoryDialog({ story, sprintId }: EditStoryDialogProps) {
+export default function EditStoryDialog({ story, sprintId, iconOnly = false }: EditStoryDialogProps) {
     const [open, setOpen] = useState(false)
 
     const getField = (id: number) =>
@@ -183,9 +185,15 @@ export default function EditStoryDialog({ story, sprintId }: EditStoryDialogProp
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
+                  iconOnly ? (
+                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
+                      <IconAdjustments className="size-3.5" />
+                    </Button>
+                  ) : (
                     <Button size="sm" variant="default" className="h-6 text-[10px] px-2">
                         Update
                     </Button>
+                  )
                 }
             />
 

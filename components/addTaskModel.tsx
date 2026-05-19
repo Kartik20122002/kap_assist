@@ -16,6 +16,7 @@ import { createTask } from "@/lib/api/task"
 import { mutate } from "swr"
 import { getNextTaskStatuses, TASK_RULES } from "@/lib/utils"
 import { toast } from "sonner"
+import { IconPlus } from "@tabler/icons-react"
 
 const categoryMap: any = {
     CODING: "WORK",
@@ -26,7 +27,7 @@ const categoryMap: any = {
     TRAINING: "NA",
 }
 
-export default function CreateTaskDialog({ parent_issue_id , project_id, assigned_to_id }: any) {
+export default function CreateTaskDialog({ parent_issue_id, project_id, assigned_to_id, iconOnly = false }: any) {
     const [open, setOpen] = useState(false)
 
     const currentStatus = { id: 1, name: "New" } // default
@@ -160,9 +161,15 @@ export default function CreateTaskDialog({ parent_issue_id , project_id, assigne
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
+                  iconOnly ? (
+                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
+                      <IconPlus className="size-3.5" />
+                    </Button>
+                  ) : (
                     <Button size="sm" variant={"secondary"} className="h-6 px-3 text-[10px]">
                         Add Task
                     </Button>
+                  )
                 }
             />
 

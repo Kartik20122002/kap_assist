@@ -27,8 +27,6 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
       f.name.includes("Acceptance")
     )?.value
 
-    
-
   const { data: time_entries } = useSWR(
     story?.project?.id ? ["time_entries", story?.project?.id, story?.assigned_to?.id] : null,
     () => getTimeEntries(story?.project?.id, story?.assigned_to?.id), ApiConfig
@@ -39,15 +37,12 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     () => getTasks(story?.id), ApiConfig
   )
 
-  // 🔥 map: taskId -> total hours
   const timeMap =
     time_entries?.reduce((acc: any, t: any) => {
       const id = t.issue?.id
       if (!id) return acc
-
       if (!acc[id]) acc[id] = 0
       acc[id] += t.hours
-
       return acc
     }, {}) || {}
 
@@ -57,10 +52,8 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     }, 0) || 0
 
   const today = new Date().toISOString().split("T")[0]
-  const OPEN_STATUSES = ["New", "Assigned", "In Progress", "Ready for Testing"]
   const CLOSED_STATUSES = ["Closed", "Implemented", "Rejected"]
 
-  // A1 — Story has no tasks
   useEffect(() => {
     if (tasks !== undefined && tasks.length === 0) {
       toast.warning(`No tasks yet for "${story.subject}"`, {
@@ -70,7 +63,6 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     }
   }, [tasks])
 
-  // A2 — Story has logged time but status is still New / Assigned
   useEffect(() => {
     if (storyTime > 0 && ["New", "Assigned"].includes(story.status?.name)) {
       toast.warning(`"${story.subject}" has ${storyTime}h logged but is still "${story.status?.name}"`, {
@@ -80,13 +72,8 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     }
   }, [storyTime, story.status?.name])
 
-  // A3 — Story is overdue
   useEffect(() => {
-    if (
-      story.due_date &&
-      story.due_date < today &&
-      !CLOSED_STATUSES.includes(story.status?.name)
-    ) {
+    if (story.due_date && story.due_date < today && !CLOSED_STATUSES.includes(story.status?.name)) {
       toast.error(`"${story.subject}" is past due (${story.due_date})`, {
         id: `story-${story.id}-overdue`,
         description: "Update the due date or close this story.",
@@ -94,7 +81,6 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     }
   }, [story.due_date, story.status?.name])
 
-  // A10 — Story has no acceptance criteria
   useEffect(() => {
     if (!acceptance && !CLOSED_STATUSES.includes(story.status?.name)) {
       toast.warning(`"${story.subject}" has no acceptance criteria`, {
@@ -120,10 +106,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
     let closed = 0
     for (const task of openTasks) {
       try {
-        await updateTask(task.id, {
-          status_id: 5,
-          due_date: task.due_date || today,
-        })
+        await updateTask(task.id, { status_id: 5, due_date: task.due_date || today })
         closed++
       } catch {
         toast.error(`Failed to close "${task.subject}"`)
@@ -136,59 +119,61 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
   }
 
   return (
-    <Card className="bg-muted/40 transition">
+    <Card className="bg-muted/40 border-border/40 transition">
       <CardContent className="p-3 space-y-2">
 
-        {/* Header */}
-        <div className="space-y-1.5">
-          <div className="text-sm font-medium leading-snug line-clamp-2">
+        {/* Title row + admin icon actions */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-sm font-semibold leading-snug line-clamp-2 flex-1">
             {story.subject}
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`px-2 rounded-full text-xs whitespace-nowrap ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
-            {isAdmin && <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />}
-            {isAdmin && <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />}
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
+              <CreateTaskDialog
+                parent_issue_id={story?.id}
+                project_id={story?.project?.id}
+                assigned_to_id={story.assigned_to?.id}
+                iconOnly
+              />
+              <EditStoryDialog
+                story={story}
+                sprintId={story.fixed_version?.id ?? story.fixed_version_id}
+                iconOnly
+              />
+            </div>
+          )}
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1 text-xs">
-
-          <div className="min-w-0">
-            <div className="opacity-60">Assigned</div>
-            <div className="truncate">{story.assigned_to?.name || "-"}</div>
-          </div>
-
-          <div className="min-w-0">
-            <div className="opacity-60">Author</div>
-            <div className="truncate">{story.author?.name}</div>
-          </div>
-
-          <div>
-            <div className="opacity-60">Story Points</div>
-            <div>{storyPoints}</div>
-          </div>
-
-          <div>
-            <div className="opacity-60">Time</div>
-            <div>{storyTime}h</div>
-          </div>
-
+        {/* Compact meta row */}
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs">
+          <span className={`px-2 py-0.5 rounded-full font-medium ${statusStyles[story?.status?.name]}`}>
+            {story.status?.name}
+          </span>
+          <span className="text-muted-foreground">
+            SP <span className="font-semibold text-foreground">{storyPoints}</span>
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground">
+            ⏱ <span className="text-foreground">{storyTime}h</span>
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground truncate max-w-[150px]">
+            {story.assigned_to?.name || "Unassigned"}
+          </span>
         </div>
 
-        {/* Acceptance */}
+        {/* Acceptance criteria */}
         {acceptance && (
-          <div className="text-[10px] text-muted-foreground line-clamp-2">
+          <div className="text-[10px] text-muted-foreground bg-muted/50 rounded-md px-2 py-1 line-clamp-2 leading-relaxed">
             {acceptance}
           </div>
         )}
 
-        {/* Tasks */}
+        {/* Task list */}
         {tasks?.length > 0 && (
-          <div className="space-y-1 pt-1">
-
+          <div className="space-y-1 border-t border-border/30 pt-2">
             {isAdmin && openTasks.length > 0 && (
-              <div className="flex justify-end pb-1">
+              <div className="flex justify-end pb-0.5">
                 <Button
                   size="sm"
                   variant="destructive"
@@ -199,34 +184,38 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
                 </Button>
               </div>
             )}
-
             {tasks.map((task: any) => {
               const taskTime = timeMap[task.id] || 0
               const taskHistory =
                 time_entries
                   ?.filter((t: any) => t.issue?.id === task.id)
-                  ?.sort(
-                    (a: any, b: any) =>
-                      new Date(b.spent_on).getTime() -
-                      new Date(a.spent_on).getTime()
+                  ?.sort((a: any, b: any) =>
+                    new Date(b.spent_on).getTime() - new Date(a.spent_on).getTime()
                   ) || []
-
-              return (<TaskCard key={`task:${task.id}`} projectId={story?.project?.id} task={task} taskTime={taskTime} taskHistory={taskHistory} />)
+              return (
+                <TaskCard
+                  key={`task:${task.id}`}
+                  projectId={story?.project?.id}
+                  task={task}
+                  taskTime={taskTime}
+                  taskHistory={taskHistory}
+                />
+              )
             })}
-
           </div>
         )}
 
       </CardContent>
 
-      {/* Close All Tasks confirmation */}
       <Dialog open={closeTasksOpen} onOpenChange={setCloseTasksOpen}>
         <DialogContent className="max-w-sm p-6">
           <DialogHeader>
             <DialogTitle className="text-sm">Close All Tasks?</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            This will close <span className="font-semibold text-foreground">{openTasks.length}</span> open {openTasks.length === 1 ? "task" : "tasks"} in <span className="font-semibold text-foreground">"{story.subject}"</span> one by one. This cannot be undone.
+            This will close <span className="font-semibold text-foreground">{openTasks.length}</span>{" "}
+            open {openTasks.length === 1 ? "task" : "tasks"} in{" "}
+            <span className="font-semibold text-foreground">"{story.subject}"</span> one by one. This cannot be undone.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="h-8 text-xs" onClick={() => setCloseTasksOpen(false)} disabled={closingTasks}>
@@ -245,7 +234,6 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   const today = new Date().toISOString().split("T")[0]
 
-  // A4 — Task exceeded estimated hours
   useEffect(() => {
     if (task.estimated_hours > 0 && taskTime > task.estimated_hours) {
       toast.warning(`"${task.subject}" exceeded estimate (${taskTime}h / ${task.estimated_hours}h)`, {
@@ -255,7 +243,6 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
     }
   }, [taskTime, task.estimated_hours])
 
-  // A5 — Task has logged time but status is still New / Assigned
   useEffect(() => {
     if (taskTime > 0 && ["New", "Assigned"].includes(task.status?.name)) {
       toast.warning(`Task "${task.subject}" has ${taskTime}h logged but is still "${task.status?.name}"`, {
@@ -265,13 +252,8 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
     }
   }, [taskTime, task.status?.name])
 
-  // A6 — Task is overdue
   useEffect(() => {
-    if (
-      task.due_date &&
-      task.due_date < today &&
-      !["Completed", "Closed"].includes(task.status?.name)
-    ) {
+    if (task.due_date && task.due_date < today && !["Completed", "Closed"].includes(task.status?.name)) {
       toast.error(`Task "${task.subject}" is past due (${task.due_date})`, {
         id: `task-${task.id}-overdue`,
         description: "Update the due date or close this task.",
@@ -280,34 +262,26 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   }, [task.due_date, task.status?.name])
 
   return (
-    <div
-      key={task.id}
-      className="p-2 rounded-md bg-muted/30 transition space-y-1.5"
-    >
+    <div className="px-2 py-1.5 rounded-lg bg-background/50 border border-border/20 space-y-1">
       {/* Title — full width, 2-line clamp */}
-      <div className="text-sm font-medium leading-snug line-clamp-2">
+      <div className="text-xs font-medium leading-snug line-clamp-2">
         {task.subject}
       </div>
 
-      {/* Info + Actions row */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          <span className={`px-2 rounded-full ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
-          <span><span className="opacity-60">Est:</span> {task.estimated_hours || 0}h</span>
-          <span><span className="opacity-60">Spent:</span> <span className="font-medium text-foreground">{taskTime}h</span></span>
+      {/* Status + times (left) · icon actions (right) */}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+          <span className={`px-1.5 py-0.5 rounded-full font-medium ${statusStyles[task?.status?.name]}`}>
+            {task.status?.name}
+          </span>
+          <span>Est: {task.estimated_hours || 0}h</span>
+          <span>·</span>
+          <span>Spent: <span className="font-semibold text-foreground">{taskTime}h</span></span>
         </div>
-        <div className="flex gap-1 shrink-0">
-          <TimeLogDialog
-            taskHistory={taskHistory}
-            taskId={task.id}
-            projectId={projectId}
-          />
-          <TaskNoteDialog taskId={task.id} />
-          <EditTaskDialog
-            taskTime={taskTime}
-            task={task}
-            projectId={projectId}
-          />
+        <div className="flex items-center gap-0 shrink-0">
+          <TimeLogDialog taskHistory={taskHistory} taskId={task.id} projectId={projectId} iconOnly />
+          <TaskNoteDialog taskId={task.id} iconOnly />
+          <EditTaskDialog taskTime={taskTime} task={task} projectId={projectId} iconOnly />
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ import { updateTask } from "@/lib/api/task"
 import { mutate } from "swr"
 import { getNextTaskStatuses, TASK_RULES } from "@/lib/utils"
 import { toast } from "sonner"
+import { IconPencil } from "@tabler/icons-react"
 
 const categoryMap: any = {
     CODING: "WORK",
@@ -27,7 +28,7 @@ const categoryMap: any = {
     TRAINING: "NA",
 }
 
-export default function EditTaskDialog({ task, taskTime }: any) {
+export default function EditTaskDialog({ task, taskTime, iconOnly = false }: any) {
     const [open, setOpen] = useState(false)
 
     const nextStatuses = getNextTaskStatuses(task.status?.name)
@@ -152,9 +153,15 @@ export default function EditTaskDialog({ task, taskTime }: any) {
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
+                  iconOnly ? (
+                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
+                      <IconPencil className="size-3.5" />
+                    </Button>
+                  ) : (
                     <Button size="sm" variant="secondary" className="h-6 px-4 text-[10px]">
                         Edit
                     </Button>
+                  )
                 }
             />
 

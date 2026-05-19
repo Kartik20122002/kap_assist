@@ -14,6 +14,7 @@ import {
 import { createTimeEntry } from "@/lib/api/time"
 import { mutate } from "swr"
 import { toast } from "sonner"
+import { IconClock } from "@tabler/icons-react"
 
 const categoryMap: any = {
   CODING: "WORK",
@@ -24,7 +25,7 @@ const categoryMap: any = {
   TRAINING: "NA",
 }
 
-export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: any) {
+export default function TimeLogDialog({ taskId, projectId, taskHistory = [], iconOnly = false }: any) {
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -68,9 +69,15 @@ export default function TimeLogDialog({ taskId, projectId, taskHistory = [] }: a
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button size="sm" variant="secondary" className="h-6 px-4 text-[10px]">
-            Time Log
-          </Button>
+          iconOnly ? (
+            <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
+              <IconClock className="size-3.5" />
+            </Button>
+          ) : (
+            <Button size="sm" variant="secondary" className="h-6 px-4 text-[10px]">
+              Time Log
+            </Button>
+          )
         }
       />
 
