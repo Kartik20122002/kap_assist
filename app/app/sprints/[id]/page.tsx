@@ -9,16 +9,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import StoryCard from "@/components/story-card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { getCurrentUser } from "@/lib/api/user"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { useMemo, useState, useEffect, useCallback } from "react"
 import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
@@ -146,16 +137,12 @@ export default function SprintPage() {
                   version={version}
                 />
               )}
-              <Select value={version?.status ?? ""} disabled={!isAdmin}>
-                <SelectTrigger disabled={!isAdmin} className="h-7 text-xs w-28">
-                  <SelectValue className={"capitalize"} placeholder={version?.status} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="locked">Locked</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
+              <Badge
+                variant={version?.status === "open" ? "default" : "secondary"}
+                className="capitalize text-xs px-2.5 py-0.5"
+              >
+                {version?.status}
+              </Badge>
             </div>
           </div>
 
@@ -201,7 +188,7 @@ export default function SprintPage() {
 
       {/* CHILDREN TREE */}
       <Card className="bg-muted/40">
-        <CardHeader>
+        <CardHeader className="px-2 py-3 sm:px-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-sm">User Stories & Tasks</CardTitle>
             {isAdmin && (
@@ -231,7 +218,7 @@ export default function SprintPage() {
           )}
         </CardHeader>
 
-        <CardContent className="space-y-3">
+        <CardContent className="px-2 pb-3 sm:px-4 space-y-2">
           {visibleStories.map((story: any) => (
             <StoryCard key={story.id} story={story} isAdmin={isAdmin} />
           ))}

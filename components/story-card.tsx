@@ -120,7 +120,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
   return (
     <Card className="bg-muted/40 border-border/40 transition">
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-2 sm:p-3 space-y-2">
 
         {/* Title row + admin icon actions */}
         <div className="flex items-start justify-between gap-2">
@@ -171,7 +171,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
         {/* Task list */}
         {tasks?.length > 0 && (
-          <div className="space-y-1 border-t border-border/30 pt-2">
+          <div className="space-y-1 border-t border-border/30 pt-1.5">
             {isAdmin && openTasks.length > 0 && (
               <div className="flex justify-end pb-0.5">
                 <Button
@@ -262,23 +262,23 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   }, [task.due_date, task.status?.name])
 
   return (
-    <div className="px-3 py-2 rounded-lg bg-background/50 border border-border/20 space-y-1.5">
+    <div className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-background/50 border border-border/20 space-y-1">
       {/* Title — full width, 2-line clamp */}
       <div className="text-xs font-medium leading-snug line-clamp-2">
         {task.subject}
       </div>
 
-      {/* Status + times (left) · icon actions (right) */}
+      {/* Status + times (left, no-wrap) · icon actions (right, always visible) */}
       <div className="flex items-center justify-between gap-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-          <span className={`px-1.5 py-0.5 rounded-full font-medium ${statusStyles[task?.status?.name]}`}>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground min-w-0 overflow-hidden">
+          <span className={`px-1.5 py-0.5 rounded-full font-medium shrink-0 ${statusStyles[task?.status?.name]}`}>
             {task.status?.name}
           </span>
-          <span>Est: {task.estimated_hours || 0}h</span>
-          <span>·</span>
-          <span>Spent: <span className="font-semibold text-foreground">{taskTime}h</span></span>
+          <span className="whitespace-nowrap truncate">
+            Est:{task.estimated_hours || 0}h · Sp:<span className="font-semibold text-foreground">{taskTime}h</span>
+          </span>
         </div>
-        <div className="flex items-center gap-0 shrink-0">
+        <div className="flex items-center shrink-0">
           <TimeLogDialog taskHistory={taskHistory} taskId={task.id} projectId={projectId} iconOnly />
           <TaskNoteDialog taskId={task.id} iconOnly />
           <EditTaskDialog taskTime={taskTime} task={task} projectId={projectId} iconOnly />

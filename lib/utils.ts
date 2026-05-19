@@ -9,8 +9,12 @@ export const statusStyles: any = {
   "New": "bg-emerald-500/20 text-gray-300",
   "Assigned": "bg-blue-500/20 text-blue-400",
   "In Progress": "bg-yellow-500/20 text-yellow-400",
+  "Ready": "bg-violet-500/20 text-violet-400",
+  "Ready for Testing": "bg-violet-500/20 text-violet-400",
   "Completed": "bg-green-500/20 text-green-400",
+  "Implemented": "bg-teal-500/20 text-teal-400",
   "Closed": "bg-red-600/20 text-red-400",
+  "Rejected": "bg-red-600/20 text-red-400",
 }
 
 export const ApiConfig = {
