@@ -262,7 +262,7 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   }, [task.due_date, task.status?.name])
 
   return (
-    <div className="px-2 py-1.5 rounded-lg bg-background/50 border border-border/20 space-y-1">
+    <div className="px-3 py-2 rounded-lg bg-background/50 border border-border/20 space-y-1.5">
       {/* Title — full width, 2-line clamp */}
       <div className="text-xs font-medium leading-snug line-clamp-2">
         {task.subject}

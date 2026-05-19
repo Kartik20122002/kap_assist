@@ -162,8 +162,8 @@ export default function CreateTaskDialog({ parent_issue_id, project_id, assigned
             <DialogTrigger
                 render={
                   iconOnly ? (
-                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
-                      <IconPlus className="size-3.5" />
+                    <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
+                      <IconPlus className="size-4.5" />
                     </Button>
                   ) : (
                     <Button size="sm" variant={"secondary"} className="h-6 px-3 text-[10px]">

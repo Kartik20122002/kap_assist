@@ -186,8 +186,8 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
             <DialogTrigger
                 render={
                   iconOnly ? (
-                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
-                      <IconAdjustments className="size-3.5" />
+                    <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
+                      <IconAdjustments className="size-4.5" />
                     </Button>
                   ) : (
                     <Button size="sm" variant="default" className="h-6 text-[10px] px-2">

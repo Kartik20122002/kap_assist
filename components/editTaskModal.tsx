@@ -154,8 +154,8 @@ export default function EditTaskDialog({ task, taskTime, iconOnly = false }: any
             <DialogTrigger
                 render={
                   iconOnly ? (
-                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-foreground">
-                      <IconPencil className="size-3.5" />
+                    <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
+                      <IconPencil className="size-4.5" />
                     </Button>
                   ) : (
                     <Button size="sm" variant="secondary" className="h-6 px-4 text-[10px]">
