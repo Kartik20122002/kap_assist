@@ -19,7 +19,7 @@ import {
 import { getCurrentUser } from "@/lib/api/user"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useCallback } from "react"
 import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
 import { getSprintById } from "@/lib/api/sprint"
@@ -83,17 +83,18 @@ export default function SprintPage() {
   }, [userStories])
 
   const users = [...new Set(userStories?.map((us: any) => us?.assigned_to?.name))]
-  const [showUsers, setShowUsers] = useState([`${user?.firstname} ${user?.lastname}`])
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [closeStoriesOpen, setCloseStoriesOpen] = useState(false)
   const [closingStories, setClosingStories] = useState(false)
 
-  const toggleUr = (username: any) => {
-    if (showUsers?.includes(username)) setShowUsers(showUsers?.filter(v => v !== username))
-    else setShowUsers(v => [...v, username])
-  }
+  useEffect(() => {
+    if (user && !selectedUser) {
+      setSelectedUser(`${user.firstname} ${user.lastname}`)
+    }
+  }, [user])
 
   const visibleStories = userStories?.filter((story: any) =>
-    showUsers?.includes(story?.assigned_to?.name) ?? false
+    selectedUser ? story?.assigned_to?.name === selectedUser : true
   ) ?? []
 
   const closeAllStories = async () => {
@@ -214,11 +215,20 @@ export default function SprintPage() {
               </Button>
             )}
           </div>
-          {users && users?.length > 1 && <div className="flex flex-wrap gap-2">
-            {users?.map((ur: any) => {
-              return <Badge className="cursor-pointer" onClick={() => toggleUr(ur)} variant={showUsers?.includes(ur) ? "default" : "outline"} key={`user:${ur}`}>{ur as string}</Badge>
-            })}
-          </div>}
+          {users && users?.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {users?.map((ur: any) => (
+                <Badge
+                  key={`user:${ur}`}
+                  className="cursor-pointer select-none"
+                  onClick={() => setSelectedUser(ur)}
+                  variant={selectedUser === ur ? "default" : "outline"}
+                >
+                  {ur as string}
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="space-y-3">
