@@ -1,5 +1,4 @@
 "use client"
-import { Card, CardContent } from "@/components/ui/card"
 import useSWR from "swr"
 import { getTasks, updateTask } from "@/lib/api/task"
 import { getTimeEntries } from "@/lib/api/time"
@@ -119,8 +118,8 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
   }
 
   return (
-    <Card className="bg-muted/40 border-border/40 transition">
-      <CardContent className="p-2 sm:p-3 space-y-2">
+    <div className="py-3 border-b border-border/15 last:border-b-0 sm:rounded-lg sm:border sm:border-border/40 sm:bg-muted/40 sm:py-0">
+      <div className="sm:p-3 space-y-2">
 
         {/* Title row + admin icon actions */}
         <div className="flex items-start justify-between gap-2">
@@ -205,7 +204,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
           </div>
         )}
 
-      </CardContent>
+      </div>
 
       <Dialog open={closeTasksOpen} onOpenChange={setCloseTasksOpen}>
         <DialogContent className="max-w-sm p-6">
@@ -227,7 +226,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
           </div>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   )
 }
 
