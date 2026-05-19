@@ -140,11 +140,11 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
       <CardContent className="p-3 space-y-2">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="text-sm font-medium leading-snug min-w-0 flex-1 break-words">
+        <div className="space-y-1.5">
+          <div className="text-sm font-medium leading-snug line-clamp-2">
             {story.subject}
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`px-2 rounded-full text-xs whitespace-nowrap ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
             {isAdmin && <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />}
             {isAdmin && <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />}
@@ -282,12 +282,19 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   return (
     <div
       key={task.id}
-      className="p-2 rounded-md bg-muted/30 transition space-y-1"
+      className="p-2 rounded-md bg-muted/30 transition space-y-1.5"
     >
-      {/* Title + Actions */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="text-sm font-medium leading-snug min-w-0 flex-1 break-words">
-          {task.subject}
+      {/* Title — full width, 2-line clamp */}
+      <div className="text-sm font-medium leading-snug line-clamp-2">
+        {task.subject}
+      </div>
+
+      {/* Info + Actions row */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          <span className={`px-2 rounded-full ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
+          <span><span className="opacity-60">Est:</span> {task.estimated_hours || 0}h</span>
+          <span><span className="opacity-60">Spent:</span> <span className="font-medium text-foreground">{taskTime}h</span></span>
         </div>
         <div className="flex gap-1 shrink-0">
           <TimeLogDialog
@@ -302,13 +309,6 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
             projectId={projectId}
           />
         </div>
-      </div>
-
-      {/* Info row */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-        <span className={`px-2 rounded-full ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
-        <span><span className="opacity-60">Est:</span> {task.estimated_hours || 0}h</span>
-        <span><span className="opacity-60">Spent:</span> <span className="font-medium text-foreground">{taskTime}h</span></span>
       </div>
     </div>
   )
