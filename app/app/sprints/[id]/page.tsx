@@ -106,10 +106,10 @@ export default function SprintPage() {
     <div className="px-3 py-3 md:px-6 md:py-6 space-y-3 md:space-y-6">
 
       {/* HEADER — collapsible on mobile */}
-      <Card className="bg-muted/40">
+      <Card className="bg-muted/40 py-0 gap-0">
         {/* Always-visible collapsed row */}
         <div
-          className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 cursor-pointer sm:cursor-default"
+          className="flex items-center justify-between gap-2 px-3 py-1.5 sm:px-4 sm:py-3 cursor-pointer sm:cursor-default"
           onClick={() => setHeaderExpanded(v => !v)}
         >
           <div className="flex items-center gap-2 min-w-0 flex-1">

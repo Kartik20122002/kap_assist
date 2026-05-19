@@ -118,8 +118,8 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
   }
 
   return (
-    <div className="py-3 border-b border-border/30 last:border-b-0 sm:rounded-lg sm:border sm:border-border/40 sm:bg-muted/40 sm:py-0">
-      <div className="sm:p-3 space-y-2">
+    <div className="py-2.5 border-b border-border/50 last:border-b-0 sm:rounded-lg sm:border sm:border-border/40 sm:bg-muted/40 sm:py-0">
+      <div className="sm:p-3 space-y-1.5">
 
         {/* Title row + admin icon actions */}
         <div className="flex items-start justify-between gap-2">
@@ -157,11 +157,11 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
           </span>
         </div>
 
-        {/* Task list — separated by border-t */}
+        {/* Task list — indented with left border to show hierarchy */}
         {tasks?.length > 0 && (
-          <div className="border-t border-border/25 pt-1">
+          <div className="mt-1 ml-2 pl-2.5 border-l-2 border-border/40">
             {isAdmin && openTasks.length > 0 && (
-              <div className="flex justify-end py-1">
+              <div className="flex justify-end pb-1">
                 <Button
                   size="sm"
                   variant="destructive"
@@ -172,7 +172,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
                 </Button>
               </div>
             )}
-            <div className="divide-y divide-border/20">
+            <div className="divide-y divide-border/40">
               {tasks.map((task: any) => {
                 const taskTime = timeMap[task.id] || 0
                 const taskHistory =
