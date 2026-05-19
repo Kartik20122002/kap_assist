@@ -27,7 +27,7 @@ import { getSprints } from "@/lib/api/sprint"
 import useSWR from "swr"
 import { getTimeEntries } from "@/lib/api/time"
 import { ApiConfig } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { SprintList } from "@/components/sprint-list"
 import { useEffect } from "react"
 import { toast } from "sonner"
@@ -42,7 +42,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   )
 
   const router = useRouter()
-
+  const pathname = usePathname()
 
   const userData = user
     ? {
@@ -98,6 +98,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   })
     ?? []
 
+
+  useEffect(() => {
+    if (!sprintList || sprintList.length === 0) return
+    if (pathname !== "/app") return
+    const firstOpen = sprintList.find((s: any) => s.status === "open")
+    if (firstOpen) {
+      router.push(`/app/sprints/${firstOpen.id}`)
+    }
+  }, [sprintList, pathname])
 
   const { data: time_entries } = useSWR(
     (selectedProject?.id && user?.id) ? ["time_entries", selectedProject.id, user?.id] : null,

@@ -140,38 +140,37 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
       <CardContent className="p-3 space-y-2">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-          <div className="text-base font-medium line-clamp-2 sm:line-clamp-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-sm font-medium leading-snug min-w-0 flex-1 break-words">
             {story.subject}
           </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-            <span className={`px-2 rounded-full text-xs ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className={`px-2 rounded-full text-xs whitespace-nowrap ${statusStyles[story?.status?.name]}`}>{story.status?.name}</span>
             {isAdmin && <CreateTaskDialog parent_issue_id={story?.id} project_id={story?.project?.id} assigned_to_id={story.assigned_to?.id} />}
             {isAdmin && <EditStoryDialog story={story} sprintId={story.fixed_version?.id ?? story.fixed_version_id} />}
           </div>
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-1 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1 text-xs">
 
-          <div>
-            <span className="opacity-60">Assigned</span>
-            <div>{story.assigned_to?.name || "-"}</div>
+          <div className="min-w-0">
+            <div className="opacity-60">Assigned</div>
+            <div className="truncate">{story.assigned_to?.name || "-"}</div>
+          </div>
+
+          <div className="min-w-0">
+            <div className="opacity-60">Author</div>
+            <div className="truncate">{story.author?.name}</div>
           </div>
 
           <div>
-            <span className="opacity-60">Author</span>
-            <div>{story.author?.name}</div>
-          </div>
-
-          <div>
-            <span className="opacity-60">Story Points</span>
+            <div className="opacity-60">Story Points</div>
             <div>{storyPoints}</div>
           </div>
 
           <div>
-            <span className="opacity-60">Time</span>
+            <div className="opacity-60">Time</div>
             <div>{storyTime}h</div>
           </div>
 
@@ -283,56 +282,34 @@ const TaskCard = ({ task, taskTime, taskHistory, projectId }: any) => {
   return (
     <div
       key={task.id}
-      className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30 transition"
+      className="p-2 rounded-md bg-muted/30 transition space-y-1"
     >
-
-      {/* Left */}
-      <div className="flex-1 min-w-0">
-        <div className="text-base font-medium truncate">
+      {/* Title + Actions */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-sm font-medium leading-snug min-w-0 flex-1 break-words">
           {task.subject}
         </div>
-
-        {/* labeled row */}
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-0.5">
-
-          <span className={`px-2 text-xs rounded-full h-4 ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
-
-          <div className="flex gap-1">
-            <span className="opacity-60">Est:</span>
-            <span>{task.estimated_hours || 0}h</span>
-          </div>
-
-          <div className="flex gap-1">
-            <span className="opacity-60">Spent:</span>
-            <span className="font-medium text-foreground">
-              {taskTime}h
-            </span>
-          </div>
-
+        <div className="flex gap-1 shrink-0">
+          <TimeLogDialog
+            taskHistory={taskHistory}
+            taskId={task.id}
+            projectId={projectId}
+          />
+          <TaskNoteDialog taskId={task.id} />
+          <EditTaskDialog
+            taskTime={taskTime}
+            task={task}
+            projectId={projectId}
+          />
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-1 shrink-0 flex-wrap justify-end">
-
-        <TimeLogDialog
-          taskHistory={taskHistory}
-          taskId={task.id}
-          projectId={projectId}
-        />
-
-        <TaskNoteDialog
-          taskId={task.id}
-        />
-
-        <EditTaskDialog
-          taskTime={taskTime}
-          task={task}
-          projectId={projectId}
-        />
-
+      {/* Info row */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+        <span className={`px-2 rounded-full ${statusStyles[task?.status?.name]}`}>{task.status?.name}</span>
+        <span><span className="opacity-60">Est:</span> {task.estimated_hours || 0}h</span>
+        <span><span className="opacity-60">Spent:</span> <span className="font-medium text-foreground">{taskTime}h</span></span>
       </div>
-
     </div>
   )
 }
