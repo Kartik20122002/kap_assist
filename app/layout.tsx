@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <TooltipProvider>
             <InitAuth />
             {children}
-            <Toaster richColors position="top-right" />
+            <Toaster richColors position="top-right" visibleToasts={1} />
         </TooltipProvider>
         </ThemeProvider>
       </body>

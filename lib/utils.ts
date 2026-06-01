@@ -78,3 +78,32 @@ export const getNextUSStatuses = (current: string) => {
 
   return [next]
 }
+
+// Bug tracker (id=15) status graph
+const BUG_STATUS_MAP: Record<string, { id: number; name: string }> = {
+  "New":         { id: 1,  name: "New" },
+  "Reopened":    { id: 13, name: "Reopened" },
+  "Assigned":    { id: 7,  name: "Assigned" },
+  "In Progress": { id: 2,  name: "In Progress" },
+  "Completed":   { id: 16, name: "Completed" },
+  "Rejected":    { id: 6,  name: "Rejected" },
+  "On Hold":     { id: 11, name: "On Hold" },
+  "Closed":      { id: 5,  name: "Closed" },
+}
+
+const BUG_TRANSITIONS: Record<string, { id: number; name: string }[]> = {
+  "New":         [{ id: 7,  name: "Assigned" }],
+  "Reopened":    [{ id: 7,  name: "Assigned" }],
+  "Assigned":    [{ id: 2,  name: "In Progress" }],
+  "In Progress": [{ id: 16, name: "Completed" }, { id: 6, name: "Rejected" }, { id: 11, name: "On Hold" }],
+  "On Hold":     [{ id: 7,  name: "Assigned" }, { id: 6, name: "Rejected" }],
+  "Completed":   [{ id: 5,  name: "Closed" }],
+  "Rejected":    [],
+  "Closed":      [],
+}
+
+export const getBugStatusOptions = (currentName: string): { id: number; name: string }[] => {
+  const current = BUG_STATUS_MAP[currentName]
+  const nexts = BUG_TRANSITIONS[currentName] ?? []
+  return current ? [current, ...nexts] : nexts
+}

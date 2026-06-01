@@ -20,7 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { IconSelector, IconSparkles, IconRosetteDiscountCheck, IconLogout } from "@tabler/icons-react"
+import { IconSelector, IconSparkles, IconRosetteDiscountCheck, IconLogout, IconStack2, IconBug } from "@tabler/icons-react"
 import { Badge } from "./ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -102,6 +102,26 @@ export function NavUser({
                   </div>
                 </div>
               </DropdownMenuLabel>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            {/* Bugs */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => router.push("/app/bugs")} className="cursor-pointer">
+                <IconBug />
+                Bugs
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            {/* Backlog */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => router.push("/app/backlog")} className="cursor-pointer">
+                <IconStack2 />
+                Backlog
+              </DropdownMenuItem>
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />

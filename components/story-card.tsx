@@ -123,8 +123,20 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
         {/* Title row + admin icon actions */}
         <div className="flex items-start justify-between gap-2">
-          <div className="text-sm font-semibold leading-snug line-clamp-2 flex-1">
-            {story.subject}
+          <div className="flex-1 min-w-0">
+            <span
+              className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+              title="Click to copy ID"
+              onClick={() => {
+                navigator.clipboard.writeText(String(story.id))
+                  .then(() => toast.success(`#${story.id} copied`))
+              }}
+            >
+              #{story.id}
+            </span>
+            <div className="text-sm font-semibold leading-snug line-clamp-2">
+              {story.subject}
+            </div>
           </div>
           {isAdmin && (
             <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">

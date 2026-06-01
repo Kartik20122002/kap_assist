@@ -26,9 +26,9 @@ export default function Page() {
             <AvatarFallback>LR</AvatarFallback>
           </Avatar>
         </EmptyMedia>
-        <EmptyTitle>No Epic Selected</EmptyTitle>
+        <EmptyTitle>No Sprint Selected</EmptyTitle>
         <EmptyDescription>
-          Select the Epic from Sidebar or change project
+          Select the Sprint from Sidebar or change project
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
