@@ -21,20 +21,20 @@ import {
 import { IconSelector, IconPlus } from "@tabler/icons-react"
 
 export function TeamSwitcher({
-  teams, activeProject, setActiveProject
+  teams, activeProject, setActiveProject, restoreActiveProject
 }: {
   teams: {
     name: string
     logo: React.ReactNode
     id: number
-  }[], activeProject: any, setActiveProject: any
+  }[], activeProject: any, setActiveProject: any, restoreActiveProject: any
 }) {
   const { isMobile } = useSidebar()
 
   React.useEffect(() => {
     const selectedTeamStr = localStorage.getItem("selectedProject");
     const selectedTeam = teams?.find((v) => v.id == Number(selectedTeamStr)) ?? teams?.[0] ?? { id: 0 }
-    if (selectedTeam && activeProject?.id != selectedTeam.id) setActiveProject(selectedTeam);
+    if (selectedTeam && activeProject?.id != selectedTeam.id) restoreActiveProject(selectedTeam);
   }, [teams])
 
   if (!activeProject) {

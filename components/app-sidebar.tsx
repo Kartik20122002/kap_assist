@@ -72,6 +72,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const [selectedProject, setSelectedProject] = React.useState({ id: 0 });
 
+  const restoreProject = (v: any) => {
+    localStorage.setItem("selectedProject", v.id)
+    setSelectedProject(v)
+  }
+
   const setProject = (v: any) => {
     localStorage.setItem("selectedProject", v.id)
     setSelectedProject(v)
@@ -144,7 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data?.teams} setActiveProject={setProject} activeProject={selectedProject} />
+        <TeamSwitcher teams={data?.teams} setActiveProject={setProject} restoreActiveProject={restoreProject} activeProject={selectedProject} />
       </SidebarHeader>
 
       <SidebarContent>

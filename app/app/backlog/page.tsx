@@ -96,7 +96,17 @@ export default function BacklogPage() {
                   <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}>Next</Button>
                 </div>
               )}
-              {isAdmin && projectId > 0 && <BacklogCreateStoryModal projectId={projectId} />}
+              {isAdmin && projectId > 0 && (
+                <>
+                  <a
+                    href={`/app/backlog/bulk-import?projectId=${projectId}`}
+                    className="inline-flex items-center h-7 px-3 text-xs rounded-md border border-border hover:bg-input/50 transition-colors font-medium"
+                  >
+                    Add Bulk Stories
+                  </a>
+                  <BacklogCreateStoryModal projectId={projectId} />
+                </>
+              )}
             </div>
           </div>
         </CardHeader>

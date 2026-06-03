@@ -49,12 +49,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
 
     const validate = () => {
         if (!subject.trim()) return "Subject is required"
-        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
-        if (!storyPoints) return "Story points are required"
-        if (!acceptanceCriteria.trim()) return "Acceptance criteria is required"
-        if (!startDate) return "Start date is required"
-        if (!endDate) return "End date is required"
-        if (new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
         return null
     }
 
@@ -65,12 +60,11 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
             return
         }
 
-        const customFields = [
-            { id: 72, value: acceptanceCriteria },
-            { id: 8, value: String(storyPoints) },
-            { id: 43, value: startDate },
-            { id: 44, value: endDate },
-        ]
+        const customFields: any[] = []
+        if (acceptanceCriteria) customFields.push({ id: 72, value: acceptanceCriteria })
+        if (storyPoints) customFields.push({ id: 8, value: String(storyPoints) })
+        if (startDate) customFields.push({ id: 43, value: startDate })
+        if (endDate) customFields.push({ id: 44, value: endDate })
 
         const issuePayload: any = {
             project_id: projectId,
@@ -78,19 +72,17 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
             status_id: 1,
             priority_id: 2,
             subject,
-            description,
-            estimated_hours: Number(estimatedHours),
-            remaining_hours: Number(estimatedHours),
-            custom_fields: customFields,
-            rb_story_points: Number(storyPoints),
         }
 
-        if (assignedToUserId) {
-            issuePayload.assigned_to_id = Number(assignedToUserId)
+        if (description) issuePayload.description = description
+        if (estimatedHours) {
+            issuePayload.estimated_hours = Number(estimatedHours)
+            issuePayload.remaining_hours = Number(estimatedHours)
         }
-        if (parentEpicId) {
-            issuePayload.parent_issue_id = Number(parentEpicId)
-        }
+        if (storyPoints) issuePayload.rb_story_points = Number(storyPoints)
+        if (customFields.length) issuePayload.custom_fields = customFields
+        if (assignedToUserId) issuePayload.assigned_to_id = Number(assignedToUserId)
+        if (parentEpicId) issuePayload.parent_issue_id = Number(parentEpicId)
 
         toast.promise(
             createStory(issuePayload),
@@ -162,7 +154,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                             />
                         </div>
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria *</div>
+                            <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria</div>
                             <Textarea
                                 value={acceptanceCriteria}
                                 onChange={(e) => setAcceptanceCriteria(e.target.value)}
@@ -195,7 +187,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Estimated Hours *</div>
+                            <div className="text-[10px] opacity-60 font-medium">Estimated Hours</div>
                             <Input
                                 type="number"
                                 value={estimatedHours}
@@ -207,7 +199,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
+                            <div className="text-[10px] opacity-60 font-medium">Story Points</div>
                             {/* @ts-expect-error */}
                             <Select value={storyPoints} onValueChange={setStoryPoints}>
                                 <SelectTrigger className="h-8 text-xs w-20">
@@ -242,7 +234,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Start Date *</div>
+                            <div className="text-[10px] opacity-60 font-medium">Start Date</div>
                             <Input
                                 type="date"
                                 value={startDate}
@@ -252,7 +244,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">End Date *</div>
+                            <div className="text-[10px] opacity-60 font-medium">End Date</div>
                             <Input
                                 type="date"
                                 value={endDate}
