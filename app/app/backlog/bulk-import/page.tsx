@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -124,7 +124,7 @@ Dark mode toggle,,1,Toggle persists across sessions,JohnDoe`}
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function BulkImportPage() {
+function BulkImportInner() {
     const searchParams = useSearchParams()
     const projectId = Number(searchParams.get("projectId") ?? 0)
 
@@ -543,5 +543,13 @@ export default function BulkImportPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function BulkImportPage() {
+    return (
+        <Suspense>
+            <BulkImportInner />
+        </Suspense>
     )
 }
