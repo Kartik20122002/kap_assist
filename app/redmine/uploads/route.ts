@@ -17,6 +17,7 @@ import { NextRequest } from "next/server"
 export async function POST(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
 
     const formData = await req.formData()
     const file = formData.get("file") as File | null
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer()
 
     const redmineRes = await fetch(
-      `https://kap01.kpit.com/kap/uploads.json?filename=${encodeURIComponent(filename)}`,
+      `${baseUrl}/uploads.json?filename=${encodeURIComponent(filename)}`,
       {
         method: "POST",
         headers: {

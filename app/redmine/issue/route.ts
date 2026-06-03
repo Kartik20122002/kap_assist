@@ -3,10 +3,11 @@ import { NextRequest } from "next/server"
 export async function POST(req: NextRequest) {
     try {
         const apiKey = req.headers.get("x-api-key")
+        const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
 
         const body = await req.json()
 
-        let url = `https://kap01.kpit.com/kap/issues.json`
+        let url = `${baseUrl}/issues.json`
 
         const res = await fetch(url, {
             method: "POST",

@@ -3,10 +3,11 @@ import { NextRequest } from "next/server"
 export async function GET(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
     const project_id = req.nextUrl.searchParams.get("project_id")
     const user_id = req.nextUrl.searchParams.get("user_id") ?? "me"
 
-    let url = `https://kap01.kpit.com/kap/time_entries.json?user_id=${user_id}&project_id=${project_id}`
+    let url = `${baseUrl}/time_entries.json?user_id=${user_id}&project_id=${project_id}`
 
     const res = await fetch(
       url,
@@ -33,10 +34,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
 
     const body = await req.json()
 
-    let url = `https://kap01.kpit.com/kap/time_entries.json`
+    let url = `${baseUrl}/time_entries.json`
 
     const res = await fetch(url, {
       method: "POST",

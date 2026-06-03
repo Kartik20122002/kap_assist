@@ -13,10 +13,11 @@ export async function GET(
 ) {
     try {
         const apiKey = req.headers.get("x-api-key")
+        const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
         const { id: sprintId } = await params
 
         const res = await fetch(
-            `https://kap01.kpit.com/kap/versions/${sprintId}.json`,
+            `${baseUrl}/versions/${sprintId}.json`,
             {
                 headers: {
                     "X-Redmine-API-Key": apiKey || "",
@@ -60,6 +61,7 @@ export async function GET(
 export async function PUT(req: NextRequest, { params }: { params: any }) {
     try {
         const apiKey = req.headers.get("x-api-key")
+        const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
         const { id: sprintId } = await params
 
         const body = await req.json()
@@ -71,7 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: any }) {
             )
         }
 
-        let url = `https://kap01.kpit.com/kap/versions/${sprintId}.json`
+        let url = `${baseUrl}/versions/${sprintId}.json`
 
         const res = await fetch(url, {
             method: "PUT",

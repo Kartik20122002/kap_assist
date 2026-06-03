@@ -24,6 +24,7 @@ import { IconSelector, IconSparkles, IconRosetteDiscountCheck, IconLogout, IconS
 import { Badge } from "./ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useAuthStore } from "@/store/authStore"
 
 
 export function NavUser({
@@ -39,6 +40,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const router = useRouter()
+  const baseUrl = useAuthStore((s) => s.baseUrl)
 
   const roles = user?.memberships?.map((mm) => mm?.project?.id == projectId ? mm?.roles ?? [] : []).flat()?.sort((a, b) => a.id - b.id);
 
@@ -50,11 +52,14 @@ export function NavUser({
   }
 
   const handleAccount = () => {
-    window.open("https://kap01.kpit.com/kap/my/account", "_blank")
+    const url = baseUrl || "https://kap01.kpit.com/kap"
+    window.open(`${url}/my/account`, "_blank")
   }
 
+  const logout = useAuthStore((s) => s.logout)
+
   const handleLogout = () => {
-    localStorage.removeItem("apiKey")
+    logout()
     localStorage.removeItem("selectedProject")
     router.push("/login")
   }

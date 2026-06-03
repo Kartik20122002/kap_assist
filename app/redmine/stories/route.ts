@@ -3,6 +3,7 @@ import { NextRequest } from "next/server"
 export async function GET(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
     const project_id = req.nextUrl.searchParams.get("project_id")
     const assigned_to = req.nextUrl.searchParams.get("assigned_to")
     const fixed_version_id = req.nextUrl.searchParams.get("fixed_version_id")
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
     const trackerParam = tracker_id_filter ?? "5"
 
     // ?project_id=${projectId}
-    let url = `https://kap01.kpit.com/kap/issues.json?tracker_id=${trackerParam}&include=relations&status_id=${statusParam}`
+    let url = `${baseUrl}/issues.json?tracker_id=${trackerParam}&include=relations&status_id=${statusParam}`
 
     if (project_id) url = url + `&project_id=${project_id}`
     if (no_version === "true") url = url + `&f[]=fixed_version_id&op[fixed_version_id]=!*`

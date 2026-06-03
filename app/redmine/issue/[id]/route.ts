@@ -6,10 +6,11 @@ export async function GET(
 ) {
     try {
         const apiKey = req.headers.get("x-api-key")
+        const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
         const { id: issueId } = await params
 
         const res = await fetch(
-            `https://kap01.kpit.com/kap/issues/${issueId}.json?include=children,journals,relations,allowed_statuses`,
+            `${baseUrl}/issues/${issueId}.json?include=children,journals,relations,allowed_statuses`,
             {
                 headers: {
                     "X-Redmine-API-Key": apiKey || "",
@@ -32,11 +33,12 @@ export async function GET(
 export async function PUT(req: NextRequest, { params }: { params: any }) {
     try {
         const apiKey = req.headers.get("x-api-key")
+        const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
         const { id: issueId } = await params
 
         const body = await req.json()
 
-        let url = `https://kap01.kpit.com/kap/issues/${issueId}.json`
+        let url = `${baseUrl}/issues/${issueId}.json`
 
         const res = await fetch(url, {
             method: "PUT",

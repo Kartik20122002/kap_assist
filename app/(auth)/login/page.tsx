@@ -9,12 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export default function LoginPage() {
   const [key, setKey] = useState("")
+  const [baseUrl, setBaseUrl] = useState("https://kap01.kpit.com/kap")
   const setApiKey = useAuthStore((s) => s.setApiKey)
+  const setStoreBaseUrl = useAuthStore((s) => s.setBaseUrl)
   const router = useRouter()
 
   const handleLogin = () => {
-    if (!key) return
+    if (!key || !baseUrl) return
     setApiKey(key)
+    setStoreBaseUrl(baseUrl)
     router.push("/app")
   }
 
@@ -24,11 +27,18 @@ export default function LoginPage() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-xl text-neutral-200 font-semibold">Tracker Login</CardTitle>
           <CardDescription className="text-neutral-400">
-            Enter API key
+            Enter your Redmine base URL and API key
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
+          <Input
+            placeholder="Base URL (e.g. https://redmine.example.com/kap)"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            className="bg-neutral-800 border-neutral-700 focus-visible:ring-neutral-500"
+          />
+
           <Input
             placeholder="API Key"
             value={key}

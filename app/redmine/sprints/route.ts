@@ -10,9 +10,10 @@ import { NextRequest } from "next/server"
 export async function GET(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
     const projectId = req.nextUrl.searchParams.get("project_id")
 
-    let url = `https://kap01.kpit.com/kap/projects/${projectId}/versions.json`
+    let url = `${baseUrl}/projects/${projectId}/versions.json`
 
     const res = await fetch(
       url,
@@ -56,6 +57,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
     const projectId = req.nextUrl.searchParams.get("project_id")
 
     if (!projectId) {
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const url = `https://kap01.kpit.com/kap/projects/${projectId}/versions.json`
+    const url = `${baseUrl}/projects/${projectId}/versions.json`
 
     const res = await fetch(url, {
       method: "POST",

@@ -6,10 +6,11 @@ export async function GET(
 ) {
     try {
         const apiKey = req.headers.get("x-api-key")
+        const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
         const { id: project_id } = await params
 
         const res = await fetch(
-            `https://kap01.kpit.com/kap/projects/${project_id}.json?include=trackers,issue_categories,time_entry_activities`,
+            `${baseUrl}/projects/${project_id}.json?include=trackers,issue_categories,time_entry_activities`,
             {
                 headers: {
                     "X-Redmine-API-Key": apiKey || "",

@@ -3,10 +3,11 @@ import { NextRequest } from "next/server"
 export async function GET(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
+    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
     const parent_id = req.nextUrl.searchParams.get("parent_id")
     const assigned_to = req.nextUrl.searchParams.get("assigned_to")
 
-    let url = `https://kap01.kpit.com/kap/issues.json?&tracker_id=6&status_id=*&parent_id=${parent_id}&include=journals`
+    let url = `${baseUrl}/issues.json?&tracker_id=6&status_id=*&parent_id=${parent_id}&include=journals`
 
     if(assigned_to) url = url + `&assigned_to_id=${assigned_to}`
 
