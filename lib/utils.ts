@@ -55,10 +55,10 @@ export const getNextTaskStatuses = (currentName: string) => {
 
 export const US_FLOW = [
   { id: 1, name: "New" },
-  { id: 7, name: "Assigned" },
-  { id: 8, name: "Ready" },
+  // { id: 7, name: "Assigned" },
+  // { id: 8, name: "Ready" },
   { id: 2, name: "In Progress" },
-  { id: 9, name: "Implemented" },
+  // { id: 9, name: "Implemented" },
   { id: 5, name: "Closed" }
 ]
 
