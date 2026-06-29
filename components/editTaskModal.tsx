@@ -145,7 +145,8 @@ export default function EditTaskDialog({ task, taskTime, iconOnly = false }: any
         setStartDate(task.start_date || "")
         setEndDate(task.due_date || "")
         setSelectedStatus(String(currentStatus.id))
-        setCategory("CODING")
+        setCategory(task.custom_fields?.find((f: any) => f.id === 13)?.value || "CODING")
+        setRem(Math.max(0, (task?.estimated_hours ?? 0) - taskTime))
         setDoneRatio(task.done_ratio || 0)
     }
 

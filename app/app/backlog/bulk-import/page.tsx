@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createStory } from "@/lib/api/story"
 import { getProjectMembers } from "@/lib/api/project"
+import { getCurrentUser } from "@/lib/api/user"
 import { mutate } from "swr"
 
 const VALID_POINTS = new Set([1, 2, 3, 5, 8, 13])
@@ -133,6 +134,7 @@ function BulkImportInner() {
     const [trimmedCount, setTrimmedCount] = useState(0)
     const [rows, setRows] = useState<DraftRow[]>([])
     const [members, setMembers] = useState<any[]>([])
+    const [currentUserId, setCurrentUserId] = useState<string>("")
     const [results, setResults] = useState<ResultRow[]>([])
     const [progressIndex, setProgressIndex] = useState(0)
     const fileRef = useRef<HTMLInputElement>(null)
@@ -156,6 +158,13 @@ function BulkImportInner() {
             setMembers(memberList)
         } catch {
             // proceed without member matching
+        }
+
+        try {
+            const user = await getCurrentUser()
+            if (user?.id) setCurrentUserId(String(user.id))
+        } catch {
+            // proceed without current user
         }
 
         const map = memberMap(memberList)
@@ -224,9 +233,8 @@ function BulkImportInner() {
             const row = rows[i]
             setProgressIndex(i + 1)
 
-            const customFields: any[] = []
-            if (row.acceptance_criteria) customFields.push({ id: 72, value: row.acceptance_criteria })
-            if (row.story_points) customFields.push({ id: 8, value: row.story_points })
+            const pts = row.story_points ? Number(row.story_points) : 0
+            const est = pts ? 4.5 * pts : 0
 
             const payload: any = {
                 project_id: projectId,
@@ -234,14 +242,21 @@ function BulkImportInner() {
                 status_id: 1,
                 priority_id: 2,
                 subject: row.subject,
+                description: row.description || "",
+                custom_fields: [
+                    { id: 72,  value: row.acceptance_criteria || "" },
+                    { id: 5,   value: String(pts) },
+                    { id: 8,   value: String(pts) },
+                    { id: 45,  value: currentUserId },
+                    { id: 780, value: "NA" },
+                    { id: 781, value: "NA" },
+                ],
             }
-            if (row.description) payload.description = row.description
-            if (row.story_points) {
-                payload.rb_story_points = Number(row.story_points)
-                payload.estimated_hours = 4.5 * Number(row.story_points)
-                payload.remaining_hours = 4.5 * Number(row.story_points)
+            if (pts) {
+                payload.rb_story_points = pts
+                payload.estimated_hours = est
+                payload.remaining_hours = est
             }
-            if (customFields.length) payload.custom_fields = customFields
             if (row.assigned_to_id) payload.assigned_to_id = row.assigned_to_id
 
             try {

@@ -98,9 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: <IconTarget className="size-4" />,
       projectId: selectedProject?.id
     }
-  }).sort((a: any, b: any) => {
-    return new Date(b.due_date).getTime() - new Date(a.due_date).getTime();
-  })
+  }).sort((a: any, b: any) => a.name.localeCompare(b.name))
     ?? []
 
 

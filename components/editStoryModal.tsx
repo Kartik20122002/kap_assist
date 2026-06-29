@@ -37,45 +37,48 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
     const getField = (id: number) =>
         story.custom_fields?.find((f: any) => f.id === id)?.value ?? ""
 
-    // Status options: current + next allowed statuses from flow
     const currentStatusObj = US_FLOW.find((s) => s.name === story.status?.name) ?? US_FLOW[0]
     const nextStatuses = getNextUSStatuses(currentStatusObj.name)
     const statusOptions = [currentStatusObj, ...nextStatuses]
 
+    const spentHours = story.spent_hours ?? 0
+
+    const initEstimated = String(story.estimated_hours ?? "")
+    const initRemaining = (est: string) => Math.max(0, Number(est) - spentHours)
+
     const [subject, setSubject] = useState(story.subject ?? "")
     const [description, setDescription] = useState(story.description ?? "")
-    const [estimatedHours, setEstimatedHours] = useState(String(story.estimated_hours ?? ""))
-    const [storyPoints, setStoryPoints] = useState(String(story.rb_story_points ?? getField(8) ?? ""))
+    const [estimatedHours, setEstimatedHours] = useState(initEstimated)
+    const [storyPoints, setStoryPoints] = useState(String(story.rb_story_points ?? ""))
     const [assignedToId, setAssignedToId] = useState(String(story.assigned_to?.id ?? ""))
     const [parentEpicId, setParentEpicId] = useState(String(story.parent?.id ?? ""))
     const [acceptanceCriteria, setAcceptanceCriteria] = useState(getField(72))
     const [startDate, setStartDate] = useState(getField(43) || story.start_date || "")
     const [endDate, setEndDate] = useState(getField(44) || story.due_date || "")
+    const [approvedById, setApprovedById] = useState(getField(45) || "")
     const [selectedStatus, setSelectedStatus] = useState(String(currentStatusObj.name))
 
-    // Reset form when modal closes
+    const projectId = story.project?.id
+
     useEffect(() => {
         if (!open) {
             setSubject(story.subject ?? "")
             setDescription(story.description ?? "")
-            setEstimatedHours(String(story.estimated_hours ?? ""))
-            setStoryPoints(String(story.rb_story_points ?? getField(8) ?? ""))
+            setEstimatedHours(initEstimated)
+            setStoryPoints(String(story.rb_story_points ?? ""))
             setAssignedToId(String(story.assigned_to?.id ?? ""))
             setParentEpicId(String(story.parent?.id ?? ""))
             setAcceptanceCriteria(getField(72))
             setStartDate(getField(43) || story.start_date || "")
             setEndDate(getField(44) || story.due_date || "")
+            setApprovedById(getField(45) || "")
             setSelectedStatus(String(currentStatusObj.name))
         }
     }, [open])
 
-    // Auto-fill estimated hours from story points
     useEffect(() => {
         if (storyPoints) setEstimatedHours(String(4.5 * Number(storyPoints)))
     }, [storyPoints])
-
-    // Fetch epics and project members only when modal is open
-    const projectId = story.project?.id
 
     const { data: epics } = useSWR(
         projectId && open ? ["epics", projectId] : null,
@@ -89,7 +92,6 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
         ApiConfig
     )
 
-    // Fetch tasks — reuses the same SWR key as StoryCard (cache hit)
     const { data: tasks } = useSWR(
         open ? ["tasks", story.id] : null,
         () => getTasks(story.id),
@@ -100,12 +102,16 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
 
     const validate = () => {
         if (!subject.trim()) return "Subject is required"
-        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
+        if (!description.trim()) return "Description is required"
         if (!storyPoints) return "Story points are required"
+        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
         if (!acceptanceCriteria.trim()) return "Acceptance criteria is required"
         if (!startDate) return "Start date is required"
         if (!endDate) return "End date is required"
         if (new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
+        if (!assignedToId) return "Assignee is required"
+        if (!parentEpicId) return "Parent epic is required"
+        if (!approvedById) return "Approved By is required"
         return null
     }
 
@@ -116,7 +122,6 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
             return
         }
 
-        // Closed status guard — all tasks must be Completed or Closed
         const targetStatus = statusOptions.find((s) => String(s.name) === String(selectedStatus))
 
         if (targetStatus?.name === "Closed") {
@@ -134,20 +139,29 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
         }
 
         const statusObj = statusOptions.find((s) => String(s.name) === selectedStatus)
+        const pts = Number(storyPoints)
+        const est = Number(estimatedHours)
+        const remaining = Math.max(0, est - spentHours)
 
         const updates: any = {
             subject,
             description,
-            estimated_hours: Number(estimatedHours),
-            remaining_hours: Number(estimatedHours),
+            start_date: startDate,
+            due_date: endDate,
+            estimated_hours: est,
+            remaining_hours: remaining,
             assigned_to_id: Number(assignedToId),
             status_id: statusObj?.id,
-            rb_story_points: Number(storyPoints),
+            rb_story_points: pts,
             custom_fields: [
                 { id: 72, value: acceptanceCriteria },
-                { id: 8, value: String(storyPoints) },
+                { id: 5,  value: String(pts) },
+                { id: 8,  value: String(pts) },
                 { id: 43, value: startDate },
                 { id: 44, value: endDate },
+                { id: 45, value: approvedById },
+                { id: 780, value: "NA" },
+                { id: 781, value: "NA" },
             ],
         }
 
@@ -171,13 +185,14 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
     const handleReset = () => {
         setSubject(story.subject ?? "")
         setDescription(story.description ?? "")
-        setEstimatedHours(String(story.estimated_hours ?? ""))
-        setStoryPoints(String(story.rb_story_points ?? getField(8) ?? ""))
+        setEstimatedHours(initEstimated)
+        setStoryPoints(String(story.rb_story_points ?? ""))
         setAssignedToId(String(story.assigned_to?.id ?? ""))
         setParentEpicId(String(story.parent?.id ?? ""))
         setAcceptanceCriteria(getField(72))
         setStartDate(getField(43) || story.start_date || "")
         setEndDate(getField(44) || story.due_date || "")
+        setApprovedById(getField(45) || "")
         setSelectedStatus(String(currentStatusObj.name))
     }
 
@@ -204,7 +219,6 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
 
                 <div className="flex flex-col gap-4">
 
-                    {/* Subject */}
                     <div className="grow space-y-1">
                         <div className="text-[10px] opacity-60 font-medium">Subject *</div>
                         <Input
@@ -216,10 +230,8 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-start gap-2 w-full">
-
-                        {/* Description */}
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Description</div>
+                            <div className="text-[10px] opacity-60 font-medium">Description *</div>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -227,8 +239,6 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                                 className="text-xs h-28 sm:h-32 overflow-auto resize-none w-full"
                             />
                         </div>
-
-                        {/* Acceptance Criteria */}
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria *</div>
                             <Textarea
@@ -242,27 +252,21 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
 
                     <div className="flex flex-wrap gap-4 sm:gap-6 items-start sm:items-center">
 
-                        {/* Status */}
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Status *</div>
                             {/* @ts-expect-error */}
                             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                                 <SelectTrigger className="h-8 text-xs w-36">
-                                    <SelectValue>
-                                        {selectedStatus}
-                                    </SelectValue>
+                                    <SelectValue>{selectedStatus}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {statusOptions.map((s) => (
-                                        <SelectItem key={s.id} value={String(s.name)}>
-                                            {s.name}
-                                        </SelectItem>
+                                        <SelectItem key={s.id} value={String(s.name)}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Assigned To — member dropdown */}
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Assigned To *</div>
                             {/* @ts-expect-error */}
@@ -276,11 +280,8 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                                 </SelectTrigger>
                                 <SelectContent>
                                     {members?.map((m: any) => (
-                                        <SelectItem key={m.id} value={String(m.id)}>
-                                            {m.name}
-                                        </SelectItem>
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                                     ))}
-                                    {/* Fallback if members not loaded yet */}
                                     {!members && story.assigned_to && (
                                         <SelectItem value={String(story.assigned_to.id)}>
                                             {story.assigned_to.name}
@@ -290,7 +291,38 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                             </Select>
                         </div>
 
-                        {/* Estimated Hours */}
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">Approved By *</div>
+                            {/* @ts-expect-error */}
+                            <Select value={approvedById} onValueChange={setApprovedById}>
+                                <SelectTrigger className="h-8 text-xs min-w-36">
+                                    <SelectValue>
+                                        {members?.find((m: any) => String(m.id) === approvedById)?.name ?? "Select member"}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {members?.map((m: any) => (
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
+                            {/* @ts-expect-error */}
+                            <Select value={storyPoints} onValueChange={setStoryPoints}>
+                                <SelectTrigger className="h-8 text-xs w-20">
+                                    <SelectValue placeholder="Points" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {FIBONACCI_POINTS.map((point) => (
+                                        <SelectItem key={point} value={String(point)}>{point}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Estimated Hours *</div>
                             <Input
@@ -303,44 +335,21 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                             />
                         </div>
 
-                        {/* Story Points */}
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
-                            {/* @ts-expect-error */}
-                            <Select value={storyPoints} onValueChange={setStoryPoints}>
-                                <SelectTrigger className="h-8 text-xs w-20">
-                                    <SelectValue placeholder="Points" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {FIBONACCI_POINTS.map((point) => (
-                                        <SelectItem key={point} value={String(point)}>
-                                            {point}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Parent Epic */}
-                        <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Parent Epic (Optional)</div>
+                            <div className="text-[10px] opacity-60 font-medium">Parent Epic *</div>
                             {/* @ts-expect-error */}
                             <Select value={parentEpicId} onValueChange={setParentEpicId}>
                                 <SelectTrigger className="h-8 text-xs">
                                     <SelectValue placeholder="Select epic" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">None</SelectItem>
                                     {epics?.map((epic: any) => (
-                                        <SelectItem key={epic.id} value={String(epic.id)}>
-                                            {epic.subject}
-                                        </SelectItem>
+                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Start Date */}
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Start Date *</div>
                             <Input
@@ -351,7 +360,6 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                             />
                         </div>
 
-                        {/* End Date */}
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">End Date *</div>
                             <Input
@@ -362,16 +370,11 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                             />
                         </div>
                     </div>
-
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={handleReset} className="h-8 text-xs">
-                        Reset
-                    </Button>
-                    <Button onClick={handleSubmit} className="h-8 text-xs">
-                        Update Story
-                    </Button>
+                    <Button variant="outline" onClick={handleReset} className="h-8 text-xs">Reset</Button>
+                    <Button onClick={handleSubmit} className="h-8 text-xs">Update Story</Button>
                 </div>
             </DialogContent>
         </Dialog>

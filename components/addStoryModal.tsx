@@ -16,6 +16,7 @@ import {
 import { createStory } from "@/lib/api/story"
 import { getEpics } from "@/lib/api/epic"
 import { getProjectMembers } from "@/lib/api/project"
+import { getCurrentUser } from "@/lib/api/user"
 import { mutate } from "swr"
 import useSWR from "swr"
 import { ApiConfig } from "@/lib/utils"
@@ -34,6 +35,7 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
     const [acceptanceCriteria, setAcceptanceCriteria] = useState("")
     const [startDate, setStartDate] = useState("")
     const [endDate, setEndDate] = useState("")
+    const [approvedById, setApprovedById] = useState("")
 
     const { data: epics } = useSWR(
         projectId && open ? ["epics", projectId] : null,
@@ -47,18 +49,31 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
         ApiConfig
     )
 
+    const { data: currentUser } = useSWR(
+        open ? ["user"] : null,
+        getCurrentUser,
+        ApiConfig
+    )
+
+    // Default approvedById to current user when loaded
+    useEffect(() => {
+        if (currentUser?.id && !approvedById) {
+            setApprovedById(String(currentUser.id))
+        }
+    }, [currentUser])
+
     const validate = () => {
         if (!subject.trim()) return "Subject is required"
-        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
+        if (!description.trim()) return "Description is required"
         if (!storyPoints) return "Story points are required"
+        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
         if (!acceptanceCriteria.trim()) return "Acceptance criteria is required"
         if (!startDate) return "Start date is required"
         if (!endDate) return "End date is required"
-
-        if (new Date(startDate) > new Date(endDate)) {
-            return "Start date cannot be after end date"
-        }
-
+        if (new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
+        if (!assignedToUserId) return "Assignee is required"
+        if (!parentEpicId) return "Parent epic is required"
+        if (!approvedById) return "Approved By is required"
         return null
     }
 
@@ -69,12 +84,8 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
             return
         }
 
-        const customFields = [
-            { id: 72, value: acceptanceCriteria },
-            { id: 8, value: String(storyPoints) },
-            { id: 43, value: startDate },
-            { id: 44, value: endDate },
-        ]
+        const pts = Number(storyPoints)
+        const est = Number(estimatedHours)
 
         const issuePayload: any = {
             project_id: projectId,
@@ -84,15 +95,23 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
             subject,
             description,
             fixed_version_id: sprintId,
-            assigned_to_id: assignedToUserId,
-            estimated_hours: Number(estimatedHours),
-            remaining_hours: Number(estimatedHours),
-            custom_fields: customFields,
-            rb_story_points: Number(storyPoints),
-        }
-
-        if (parentEpicId) {
-            issuePayload.parent_issue_id = Number(parentEpicId)
+            assigned_to_id: Number(assignedToUserId),
+            parent_issue_id: Number(parentEpicId),
+            start_date: startDate,
+            due_date: endDate,
+            estimated_hours: est,
+            remaining_hours: est, // no spent hours on create
+            rb_story_points: pts,
+            custom_fields: [
+                { id: 72, value: acceptanceCriteria },
+                { id: 5,  value: String(pts) },
+                { id: 8,  value: String(pts) },
+                { id: 43, value: startDate },
+                { id: 44, value: endDate },
+                { id: 45, value: approvedById },
+                { id: 780, value: "NA" },
+                { id: 781, value: "NA" },
+            ],
         }
 
         toast.promise(
@@ -121,6 +140,7 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
         setAcceptanceCriteria("")
         setStartDate("")
         setEndDate("")
+        setApprovedById(currentUser?.id ? String(currentUser.id) : "")
     }
 
     useEffect(() => {
@@ -144,7 +164,6 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
 
                 <div className="flex flex-col gap-4">
 
-                    {/* Subject - Full width */}
                     <div className="grow space-y-1">
                         <div className="text-[10px] opacity-60 font-medium">Subject *</div>
                         <Input
@@ -155,13 +174,9 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                         />
                     </div>
 
-                    {/* Description - Full width */}
-
-
                     <div className="flex flex-col sm:flex-row items-start gap-2 w-full">
-
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Description</div>
+                            <div className="text-[10px] opacity-60 font-medium">Description *</div>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -169,8 +184,6 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                                 className="text-xs h-28 sm:h-32 overflow-auto resize-none w-full"
                             />
                         </div>
-
-                        {/* Acceptance Criteria */}
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria *</div>
                             <Textarea
@@ -183,30 +196,56 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                     </div>
 
                     <div className="flex flex-wrap gap-4 sm:gap-6 items-start sm:items-center">
-                        {/* Assigned To — member dropdown */}
+
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Assigned To *</div>
-                            <Select
-                                value={String(assignedToUserId)}
-                                onValueChange={(v) => setAssignedToUserId(Number(v))}
-                            >
+                            {/* @ts-expect-error */}
+                            <Select value={String(assignedToUserId)} onValueChange={(v) => setAssignedToUserId(Number(v))}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
                                     <SelectValue>
-                                        {members?.find((m: any) => String(m.id) === String(assignedToUserId))?.name
-                                            ?? "Select member"}
+                                        {members?.find((m: any) => String(m.id) === String(assignedToUserId))?.name ?? "Select member"}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {members?.map((m: any) => (
-                                        <SelectItem key={m.id} value={String(m.id)}>
-                                            {m.name}
-                                        </SelectItem>
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Estimated Hours */}
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">Approved By *</div>
+                            {/* @ts-expect-error */}
+                            <Select value={approvedById} onValueChange={setApprovedById}>
+                                <SelectTrigger className="h-8 text-xs min-w-36">
+                                    <SelectValue>
+                                        {members?.find((m: any) => String(m.id) === approvedById)?.name ?? "Select member"}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {members?.map((m: any) => (
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
+                            {/* @ts-expect-error */}
+                            <Select value={storyPoints} onValueChange={setStoryPoints}>
+                                <SelectTrigger className="h-8 text-xs w-20">
+                                    <SelectValue placeholder="Select points" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {FIBONACCI_POINTS.map((point) => (
+                                        <SelectItem key={point} value={String(point)}>{point}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Estimated Hours *</div>
                             <Input
@@ -219,44 +258,21 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                             />
                         </div>
 
-                        {/* Story Points */}
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
-                            {/* @ts-expect-error */}
-                            <Select value={storyPoints} onValueChange={setStoryPoints}>
-                                <SelectTrigger className="h-8 text-xs w-20">
-                                    <SelectValue placeholder="Select points" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {FIBONACCI_POINTS.map((point) => (
-                                        <SelectItem key={point} value={String(point)}>
-                                            {point}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Parent Epic */}
-                        <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Parent Epic (Optional)</div>
+                            <div className="text-[10px] opacity-60 font-medium">Parent Epic *</div>
                             {/* @ts-expect-error */}
                             <Select value={parentEpicId} onValueChange={setParentEpicId}>
                                 <SelectTrigger className="h-8 text-xs">
                                     <SelectValue placeholder="Select epic" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">None</SelectItem>
                                     {epics?.map((epic: any) => (
-                                        <SelectItem key={epic.id} value={String(epic.id)}>
-                                            {epic.subject}
-                                        </SelectItem>
+                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Start Date */}
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Start Date *</div>
                             <Input
@@ -267,7 +283,6 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                             />
                         </div>
 
-                        {/* End Date */}
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">End Date *</div>
                             <Input
@@ -278,17 +293,11 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                             />
                         </div>
                     </div>
-
-
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={handleReset} className="h-8 text-xs">
-                        Reset
-                    </Button>
-                    <Button onClick={handleSubmit} className="h-8 text-xs">
-                        Create Story
-                    </Button>
+                    <Button variant="outline" onClick={handleReset} className="h-8 text-xs">Reset</Button>
+                    <Button onClick={handleSubmit} className="h-8 text-xs">Create Story</Button>
                 </div>
             </DialogContent>
         </Dialog>

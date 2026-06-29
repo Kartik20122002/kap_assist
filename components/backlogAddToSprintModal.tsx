@@ -18,19 +18,38 @@ import useSWR from "swr"
 import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
 
+function getMissingFields(story: any): string[] {
+    const getField = (id: number) =>
+        story.custom_fields?.find((f: any) => f.id === id)?.value ?? ""
+
+    const missing: string[] = []
+    if (!story.subject?.trim()) missing.push("Subject")
+    if (!story.description?.trim()) missing.push("Description")
+    if (!story.rb_story_points) missing.push("Story Points")
+    if (!story.estimated_hours) missing.push("Estimated Hours")
+    if (!getField(72)?.trim()) missing.push("Acceptance Criteria")
+    if (!story.assigned_to?.id) missing.push("Assigned To")
+    if (!story.parent?.id) missing.push("Parent Epic")
+    if (!getField(45)) missing.push("Approved By")
+    return missing
+}
+
 export default function BacklogAddToSprintModal({ story, projectId }: { story: any, projectId: number }) {
     const [open, setOpen] = useState(false)
     const [selectedSprintId, setSelectedSprintId] = useState("")
     const [selectedAssigneeId, setSelectedAssigneeId] = useState("")
 
+    const missingFields = getMissingFields(story)
+    const isBlocked = missingFields.length > 0
+
     const { data: sprintsData } = useSWR(
-        projectId && open ? ["sprints", projectId] : null,
+        projectId && open && !isBlocked ? ["sprints", projectId] : null,
         () => getSprints(projectId),
         ApiConfig
     )
 
     const { data: members } = useSWR(
-        projectId && open ? ["project-members", projectId] : null,
+        projectId && open && !isBlocked ? ["project-members", projectId] : null,
         () => getProjectMembers(projectId),
         ApiConfig
     )
@@ -39,14 +58,12 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
         .filter((s: any) => s.status === "open")
         .sort((a: any, b: any) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime())
 
-    // Pre-select the latest open sprint when data loads
     useEffect(() => {
         if (openSprints.length > 0 && !selectedSprintId) {
             setSelectedSprintId(String(openSprints[0].id))
         }
     }, [openSprints.length])
 
-    // Reset on close
     useEffect(() => {
         if (!open) {
             setSelectedSprintId("")
@@ -60,12 +77,8 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
             return
         }
 
-        const updates: any = {
-            fixed_version_id: Number(selectedSprintId),
-        }
-        if (selectedAssigneeId) {
-            updates.assigned_to_id = Number(selectedAssigneeId)
-        }
+        const updates: any = { fixed_version_id: Number(selectedSprintId) }
+        if (selectedAssigneeId) updates.assigned_to_id = Number(selectedAssigneeId)
 
         const sprintId = selectedSprintId
         toast.promise(
@@ -103,51 +116,70 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
                     {story.subject}
                 </div>
 
-                <div className="flex flex-col gap-4">
-                    <div className="space-y-1">
-                        <div className="text-[10px] opacity-60 font-medium">Sprint *</div>
-                        {/* @ts-expect-error */}
-                        <Select value={selectedSprintId} onValueChange={setSelectedSprintId}>
-                            <SelectTrigger className="h-8 text-xs w-full">
-                                <SelectValue placeholder={openSprints.length === 0 ? "No open sprints" : "Select sprint"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {openSprints.map((s: any) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>
-                                        {s.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {isBlocked ? (
+                    <div className="space-y-3">
+                        <div className="text-xs text-destructive font-medium">
+                            Complete these mandatory fields before adding to a sprint:
+                        </div>
+                        <ul className="space-y-1">
+                            {missingFields.map((f) => (
+                                <li key={f} className="text-xs text-destructive flex items-center gap-1.5">
+                                    <span className="size-1.5 rounded-full bg-destructive inline-block" />
+                                    {f}
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex justify-end pt-2">
+                            <Button variant="outline" className="h-8 text-xs" onClick={() => setOpen(false)}>
+                                Close
+                            </Button>
+                        </div>
                     </div>
+                ) : (
+                    <>
+                        <div className="flex flex-col gap-4">
+                            <div className="space-y-1">
+                                <div className="text-[10px] opacity-60 font-medium">Sprint *</div>
+                                {/* @ts-expect-error */}
+                                <Select value={selectedSprintId} onValueChange={setSelectedSprintId}>
+                                    <SelectTrigger className="h-8 text-xs w-full">
+                                        <SelectValue placeholder={openSprints.length === 0 ? "No open sprints" : "Select sprint"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {openSprints.map((s: any) => (
+                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                    <div className="space-y-1">
-                        <div className="text-[10px] opacity-60 font-medium">Assign To (Optional)</div>
-                        {/* @ts-expect-error */}
-                        <Select value={selectedAssigneeId} onValueChange={setSelectedAssigneeId}>
-                            <SelectTrigger className="h-8 text-xs w-full">
-                                <SelectValue placeholder="Keep unassigned" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="">Keep unassigned</SelectItem>
-                                {members?.map((m: any) => (
-                                    <SelectItem key={m.id} value={String(m.id)}>
-                                        {m.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
+                            <div className="space-y-1">
+                                <div className="text-[10px] opacity-60 font-medium">Assign To (Optional)</div>
+                                {/* @ts-expect-error */}
+                                <Select value={selectedAssigneeId} onValueChange={setSelectedAssigneeId}>
+                                    <SelectTrigger className="h-8 text-xs w-full">
+                                        <SelectValue placeholder="Keep unassigned" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">Keep unassigned</SelectItem>
+                                        {members?.map((m: any) => (
+                                            <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
 
-                <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" className="h-8 text-xs" onClick={() => setOpen(false)}>
-                        Cancel
-                    </Button>
-                    <Button className="h-8 text-xs" onClick={handleSubmit} disabled={!selectedSprintId}>
-                        Add to Sprint
-                    </Button>
-                </div>
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button variant="outline" className="h-8 text-xs" onClick={() => setOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button className="h-8 text-xs" onClick={handleSubmit} disabled={!selectedSprintId}>
+                                Add to Sprint
+                            </Button>
+                        </div>
+                    </>
+                )}
             </DialogContent>
         </Dialog>
     )

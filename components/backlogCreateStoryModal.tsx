@@ -16,6 +16,7 @@ import {
 import { createStory } from "@/lib/api/story"
 import { getEpics } from "@/lib/api/epic"
 import { getProjectMembers } from "@/lib/api/project"
+import { getCurrentUser } from "@/lib/api/user"
 import { mutate } from "swr"
 import useSWR from "swr"
 import { ApiConfig } from "@/lib/utils"
@@ -32,8 +33,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
     const [assignedToUserId, setAssignedToUserId] = useState("")
     const [parentEpicId, setParentEpicId] = useState("")
     const [acceptanceCriteria, setAcceptanceCriteria] = useState("")
-    const [startDate, setStartDate] = useState("")
-    const [endDate, setEndDate] = useState("")
+    const [approvedById, setApprovedById] = useState("")
 
     const { data: epics } = useSWR(
         projectId && open ? ["epics", projectId] : null,
@@ -47,9 +47,26 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
         ApiConfig
     )
 
+    const { data: currentUser } = useSWR(
+        open ? ["user"] : null,
+        getCurrentUser,
+        ApiConfig
+    )
+
+    useEffect(() => {
+        if (currentUser?.id && !approvedById) {
+            setApprovedById(String(currentUser.id))
+        }
+    }, [currentUser])
+
     const validate = () => {
         if (!subject.trim()) return "Subject is required"
-        if (startDate && endDate && new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
+        if (!description.trim()) return "Description is required"
+        if (!storyPoints) return "Story points are required"
+        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
+        if (!acceptanceCriteria.trim()) return "Acceptance criteria is required"
+        if (!assignedToUserId) return "Assignee is required"
+        if (!approvedById) return "Approved By is required"
         return null
     }
 
@@ -60,11 +77,8 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
             return
         }
 
-        const customFields: any[] = []
-        if (acceptanceCriteria) customFields.push({ id: 72, value: acceptanceCriteria })
-        if (storyPoints) customFields.push({ id: 8, value: String(storyPoints) })
-        if (startDate) customFields.push({ id: 43, value: startDate })
-        if (endDate) customFields.push({ id: 44, value: endDate })
+        const pts = Number(storyPoints)
+        const est = Number(estimatedHours)
 
         const issuePayload: any = {
             project_id: projectId,
@@ -72,16 +86,21 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
             status_id: 1,
             priority_id: 2,
             subject,
+            description,
+            assigned_to_id: Number(assignedToUserId),
+            estimated_hours: est,
+            remaining_hours: est,
+            rb_story_points: pts,
+            custom_fields: [
+                { id: 72,  value: acceptanceCriteria },
+                { id: 5,   value: String(pts) },
+                { id: 8,   value: String(pts) },
+                { id: 45,  value: approvedById },
+                { id: 780, value: "NA" },
+                { id: 781, value: "NA" },
+            ],
         }
 
-        if (description) issuePayload.description = description
-        if (estimatedHours) {
-            issuePayload.estimated_hours = Number(estimatedHours)
-            issuePayload.remaining_hours = Number(estimatedHours)
-        }
-        if (storyPoints) issuePayload.rb_story_points = Number(storyPoints)
-        if (customFields.length) issuePayload.custom_fields = customFields
-        if (assignedToUserId) issuePayload.assigned_to_id = Number(assignedToUserId)
         if (parentEpicId) issuePayload.parent_issue_id = Number(parentEpicId)
 
         toast.promise(
@@ -108,8 +127,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
         setAssignedToUserId("")
         setParentEpicId("")
         setAcceptanceCriteria("")
-        setStartDate("")
-        setEndDate("")
+        setApprovedById(currentUser?.id ? String(currentUser.id) : "")
     }
 
     useEffect(() => {
@@ -145,7 +163,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
 
                     <div className="flex flex-col sm:flex-row items-start gap-2 w-full">
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Description</div>
+                            <div className="text-[10px] opacity-60 font-medium">Description *</div>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -154,7 +172,7 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                             />
                         </div>
                         <div className="w-full sm:basis-1/2 sm:grow space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria</div>
+                            <div className="text-[10px] opacity-60 font-medium">Acceptance Criteria *</div>
                             <Textarea
                                 value={acceptanceCriteria}
                                 onChange={(e) => setAcceptanceCriteria(e.target.value)}
@@ -167,27 +185,56 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                     <div className="flex flex-wrap gap-4 sm:gap-6 items-start sm:items-center">
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Assigned To (Optional)</div>
+                            <div className="text-[10px] opacity-60 font-medium">Assigned To *</div>
                             {/* @ts-expect-error */}
                             <Select value={assignedToUserId} onValueChange={setAssignedToUserId}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
-                                    <SelectValue placeholder="Unassigned">
-                                        {members?.find((m: any) => String(m.id) === assignedToUserId)?.name ?? "Unassigned"}
+                                    <SelectValue placeholder="Select member">
+                                        {members?.find((m: any) => String(m.id) === assignedToUserId)?.name ?? "Select member"}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Unassigned</SelectItem>
                                     {members?.map((m: any) => (
-                                        <SelectItem key={m.id} value={String(m.id)}>
-                                            {m.name}
-                                        </SelectItem>
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Estimated Hours</div>
+                            <div className="text-[10px] opacity-60 font-medium">Approved By *</div>
+                            {/* @ts-expect-error */}
+                            <Select value={approvedById} onValueChange={setApprovedById}>
+                                <SelectTrigger className="h-8 text-xs min-w-36">
+                                    <SelectValue placeholder="Select member">
+                                        {members?.find((m: any) => String(m.id) === approvedById)?.name ?? "Select member"}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {members?.map((m: any) => (
+                                        <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
+                            {/* @ts-expect-error */}
+                            <Select value={storyPoints} onValueChange={setStoryPoints}>
+                                <SelectTrigger className="h-8 text-xs w-20">
+                                    <SelectValue placeholder="Select points" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {FIBONACCI_POINTS.map((point) => (
+                                        <SelectItem key={point} value={String(point)}>{point}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">Estimated Hours *</div>
                             <Input
                                 type="number"
                                 value={estimatedHours}
@@ -196,23 +243,6 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                                 className="h-8 text-xs w-20"
                                 min="0"
                             />
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Story Points</div>
-                            {/* @ts-expect-error */}
-                            <Select value={storyPoints} onValueChange={setStoryPoints}>
-                                <SelectTrigger className="h-8 text-xs w-20">
-                                    <SelectValue placeholder="Select points" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {FIBONACCI_POINTS.map((point) => (
-                                        <SelectItem key={point} value={String(point)}>
-                                            {point}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         <div className="space-y-1">
@@ -225,43 +255,17 @@ export default function BacklogCreateStoryModal({ projectId }: { projectId: numb
                                 <SelectContent>
                                     <SelectItem value="">None</SelectItem>
                                     {epics?.map((epic: any) => (
-                                        <SelectItem key={epic.id} value={String(epic.id)}>
-                                            {epic.subject}
-                                        </SelectItem>
+                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Start Date</div>
-                            <Input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="h-8 text-xs"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">End Date</div>
-                            <Input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="h-8 text-xs"
-                            />
                         </div>
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={handleReset} className="h-8 text-xs">
-                        Reset
-                    </Button>
-                    <Button onClick={handleSubmit} className="h-8 text-xs">
-                        Create Story
-                    </Button>
+                    <Button variant="outline" onClick={handleReset} className="h-8 text-xs">Reset</Button>
+                    <Button onClick={handleSubmit} className="h-8 text-xs">Create Story</Button>
                 </div>
             </DialogContent>
         </Dialog>
