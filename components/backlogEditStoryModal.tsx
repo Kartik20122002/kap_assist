@@ -14,7 +14,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { updateStory } from "@/lib/api/story"
-import { getEpics } from "@/lib/api/epic"
+import { getFeatures } from "@/lib/api/feature"
 import { getProjectMembers } from "@/lib/api/project"
 import { mutate } from "swr"
 import useSWR from "swr"
@@ -83,9 +83,9 @@ export default function BacklogEditStoryModal({ story }: { story: any }) {
         if (isUserStory && storyPoints) setEstimatedHours(String(4.5 * Number(storyPoints)))
     }, [storyPoints])
 
-    const { data: epics } = useSWR(
-        projectId && open && isUserStory ? ["epics", projectId] : null,
-        () => getEpics(projectId),
+    const { data: features } = useSWR(
+        projectId && open && isUserStory ? ["features", projectId] : null,
+        () => getFeatures(projectId),
         ApiConfig
     )
 
@@ -233,8 +233,8 @@ export default function BacklogEditStoryModal({ story }: { story: any }) {
 
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Status *</div>
-                            {/* @ts-expect-error */}
-                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                            
+                            <Select value={selectedStatus} onValueChange={(v) => v != null && setSelectedStatus(v)}>
                                 <SelectTrigger className="h-8 text-xs w-36">
                                     <SelectValue>{selectedStatus}</SelectValue>
                                 </SelectTrigger>
@@ -250,8 +250,8 @@ export default function BacklogEditStoryModal({ story }: { story: any }) {
                             <div className="text-[10px] opacity-60 font-medium">
                                 Assigned To {isUserStory ? "*" : "(Optional)"}
                             </div>
-                            {/* @ts-expect-error */}
-                            <Select value={assignedToId} onValueChange={setAssignedToId}>
+                            
+                            <Select value={assignedToId} onValueChange={(v) => v != null && setAssignedToId(v)}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
                                     <SelectValue>
                                         {members?.find((m: any) => String(m.id) === assignedToId)?.name
@@ -286,8 +286,8 @@ export default function BacklogEditStoryModal({ story }: { story: any }) {
                             <>
                                 <div className="space-y-1">
                                     <div className="text-[10px] opacity-60 font-medium">Approved By *</div>
-                                    {/* @ts-expect-error */}
-                                    <Select value={approvedById} onValueChange={setApprovedById}>
+                                    
+                                    <Select value={approvedById} onValueChange={(v) => v != null && setApprovedById(v)}>
                                         <SelectTrigger className="h-8 text-xs min-w-36">
                                             <SelectValue>
                                                 {members?.find((m: any) => String(m.id) === approvedById)?.name ?? "Select member"}
@@ -303,8 +303,8 @@ export default function BacklogEditStoryModal({ story }: { story: any }) {
 
                                 <div className="space-y-1">
                                     <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
-                                    {/* @ts-expect-error */}
-                                    <Select value={storyPoints} onValueChange={setStoryPoints}>
+                                    
+                                    <Select value={storyPoints} onValueChange={(v) => v != null && setStoryPoints(v)}>
                                         <SelectTrigger className="h-8 text-xs w-20">
                                             <SelectValue placeholder="Points" />
                                         </SelectTrigger>
@@ -329,15 +329,15 @@ export default function BacklogEditStoryModal({ story }: { story: any }) {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <div className="text-[10px] opacity-60 font-medium">Parent Epic (Optional)</div>
-                                    {/* @ts-expect-error */}
-                                    <Select value={parentEpicId} onValueChange={setParentEpicId}>
+                                    <div className="text-[10px] opacity-60 font-medium">Parent Feature (Optional)</div>
+                                    
+                                    <Select value={parentEpicId} onValueChange={(v) => v != null && setParentEpicId(v)}>
                                         <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue placeholder="Select epic" />
+                                            <SelectValue placeholder="Select feature" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="">None</SelectItem>
-                                            {epics?.map((epic: any) => (
+                                            {features?.issues?.map((epic: any) => (
                                                 <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
                                             ))}
                                         </SelectContent>

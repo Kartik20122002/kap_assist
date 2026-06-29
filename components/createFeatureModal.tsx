@@ -13,8 +13,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { createStory } from "@/lib/api/story"
-import { getFeatures } from "@/lib/api/feature"
+import { createFeature } from "@/lib/api/feature"
+import { getEpics } from "@/lib/api/epic"
 import { getProjectMembers } from "@/lib/api/project"
 import { getCurrentUser } from "@/lib/api/user"
 import { mutate } from "swr"
@@ -22,24 +22,26 @@ import useSWR from "swr"
 import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
 
-const FIBONACCI_POINTS = [1, 2, 3, 5, 8, 13]
+const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
+const T_SHIRT_SIZE_POINTS: Record<string, number> = { XS: 1, S: 1, M: 3, L: 5, XL: 8, XXL: 13 }
+const SIZE_UOMS = ["Pages", "Requirements", "Blocks", "Signals"]
 
-export default function CreateStoryDialog({ projectId, sprintId, assignedToId }: any) {
+export default function CreateFeatureModal({ projectId }: { projectId: number }) {
     const [open, setOpen] = useState(false)
     const [subject, setSubject] = useState("")
     const [description, setDescription] = useState("")
-    const [estimatedHours, setEstimatedHours] = useState("")
-    const [storyPoints, setStoryPoints] = useState("")
-    const [assignedToUserId, setAssignedToUserId] = useState(assignedToId)
-    const [parentEpicId, setParentEpicId] = useState("")
     const [acceptanceCriteria, setAcceptanceCriteria] = useState("")
+    const [assignedToId, setAssignedToId] = useState("")
+    const [approvedById, setApprovedById] = useState("")
+    const [parentEpicId, setParentEpicId] = useState("")
+    const [tShirtSize, setTShirtSize] = useState("M")
+    const [sizeUom, setSizeUom] = useState("Pages")
     const [startDate, setStartDate] = useState("")
     const [endDate, setEndDate] = useState("")
-    const [approvedById, setApprovedById] = useState("")
 
-    const { data: features } = useSWR(
-        projectId && open ? ["features", projectId] : null,
-        () => getFeatures(projectId),
+    const { data: epics } = useSWR(
+        projectId && open ? ["epics", projectId] : null,
+        () => getEpics(projectId),
         ApiConfig
     )
 
@@ -55,77 +57,65 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
         ApiConfig
     )
 
-    // Default approvedById to current user when loaded
     useEffect(() => {
-        if (currentUser?.id && !approvedById) {
-            setApprovedById(String(currentUser.id))
+        if (currentUser?.id) {
+            if (!assignedToId) setAssignedToId(String(currentUser.id))
+            if (!approvedById) setApprovedById(String(currentUser.id))
         }
     }, [currentUser])
 
     const validate = () => {
         if (!subject.trim()) return "Subject is required"
         if (!description.trim()) return "Description is required"
-        if (!storyPoints) return "Story points are required"
-        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
         if (!acceptanceCriteria.trim()) return "Acceptance criteria is required"
+        if (!assignedToId) return "Assignee is required"
+        if (!approvedById) return "Approved By is required"
+        if (!parentEpicId) return "Parent epic is required"
         if (!startDate) return "Start date is required"
         if (!endDate) return "End date is required"
         if (new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
-        if (!assignedToUserId) return "Assignee is required"
-        if (!parentEpicId) return "Parent epic is required"
-        if (!approvedById) return "Approved By is required"
         return null
     }
 
     const handleSubmit = async () => {
         const error = validate()
-        if (error) {
-            toast.error(error)
-            return
-        }
-
-        const pts = Number(storyPoints)
-        const est = Number(estimatedHours)
+        if (error) { toast.error(error); return }
 
         const issuePayload: any = {
             project_id: projectId,
-            tracker_id: 5,
+            tracker_id: 2,
             status_id: 1,
             priority_id: 2,
             subject,
             description,
-            fixed_version_id: sprintId,
-            assigned_to_id: Number(assignedToUserId),
+            assigned_to_id: Number(assignedToId),
             parent_issue_id: Number(parentEpicId),
             start_date: startDate,
             due_date: endDate,
-            estimated_hours: est,
-            remaining_hours: est, // no spent hours on create
-            rb_story_points: pts,
             custom_fields: [
-                { id: 72, value: acceptanceCriteria },
-                { id: 5,  value: String(pts) },
-                { id: 8,  value: String(pts) },
-                { id: 43, value: startDate },
-                { id: 44, value: endDate },
-                { id: 45, value: approvedById },
-                { id: 780, value: "NA" },
-                { id: 781, value: "NA" },
+                { id: 72,  value: acceptanceCriteria },
+                { id: 4,   value: tShirtSize },
+                { id: 5,   value: String(T_SHIRT_SIZE_POINTS[tShirtSize] ?? 1) },
+                { id: 8,   value: String(T_SHIRT_SIZE_POINTS[tShirtSize] ?? 1) },
+                { id: 6,   value: sizeUom },
+                { id: 43,  value: startDate },
+                { id: 44,  value: endDate },
+                { id: 45,  value: approvedById },
             ],
         }
 
         toast.promise(
-            createStory(issuePayload),
+            createFeature(issuePayload),
             {
-                loading: "Creating story…",
+                loading: "Creating feature…",
                 success: (ok) => {
-                    if (!ok) throw new Error("Story creation failed")
-                    mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(sprintId))
+                    if (!ok) throw new Error("Feature creation failed")
+                    mutate((key: any) => Array.isArray(key) && key[0] === "features" && key[1] === projectId)
                     handleReset()
                     setOpen(false)
-                    return "Story created"
+                    return "Feature created"
                 },
-                error: (err) => err?.message ?? "Failed to create story",
+                error: (err) => err?.message ?? "Failed to create feature",
             }
         )
     }
@@ -133,33 +123,29 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
     const handleReset = () => {
         setSubject("")
         setDescription("")
-        setEstimatedHours("")
-        setStoryPoints("")
-        setAssignedToUserId(assignedToId)
-        setParentEpicId("")
         setAcceptanceCriteria("")
+        setAssignedToId(currentUser?.id ? String(currentUser.id) : "")
+        setApprovedById(currentUser?.id ? String(currentUser.id) : "")
+        setParentEpicId("")
+        setTShirtSize("M")
+        setSizeUom("Pages")
         setStartDate("")
         setEndDate("")
-        setApprovedById(currentUser?.id ? String(currentUser.id) : "")
     }
-
-    useEffect(() => {
-        if (storyPoints) setEstimatedHours(String(4.5 * Number(storyPoints)))
-    }, [storyPoints])
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
                     <Button size="sm" variant="secondary" className="h-7 px-3 text-xs">
-                        Create Story
+                        Create Feature
                     </Button>
                 }
             />
 
             <DialogContent className="w-[95vw] sm:min-w-5/6 max-w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
-                    <DialogTitle className="text-sm">Create User Story</DialogTitle>
+                    <DialogTitle className="text-sm">Create Feature</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4">
@@ -169,7 +155,7 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                         <Input
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
-                            placeholder="Enter story subject"
+                            placeholder="Enter feature subject"
                             className="h-8 text-xs"
                         />
                     </div>
@@ -180,7 +166,7 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Enter story description"
+                                placeholder="Enter feature description"
                                 className="text-xs h-28 sm:h-32 overflow-auto resize-none w-full"
                             />
                         </div>
@@ -199,10 +185,10 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
 
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Assigned To *</div>
-                            <Select value={String(assignedToUserId)} onValueChange={(v) => setAssignedToUserId(Number(v))}>
+                            <Select value={assignedToId} onValueChange={(v) => v != null && setAssignedToId(v)}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
                                     <SelectValue>
-                                        {members?.find((m: any) => String(m.id) === String(assignedToUserId))?.name ?? "Select member"}
+                                        {members?.find((m: any) => String(m.id) === assignedToId)?.name ?? "Select member"}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -215,8 +201,7 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
 
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Approved By *</div>
-                            
-                            <Select value={approvedById} onValueChange={(v) => v && setApprovedById(v)}>
+                            <Select value={approvedById} onValueChange={(v) => v != null && setApprovedById(v)}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
                                     <SelectValue>
                                         {members?.find((m: any) => String(m.id) === approvedById)?.name ?? "Select member"}
@@ -231,42 +216,42 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
-                            
-                            <Select value={storyPoints} onValueChange={(v) => v != null && setStoryPoints(v)}>
-                                <SelectTrigger className="h-8 text-xs w-20">
-                                    <SelectValue placeholder="Select points" />
+                            <div className="text-[10px] opacity-60 font-medium">Parent Epic *</div>
+                            <Select value={parentEpicId} onValueChange={(v) => v != null && setParentEpicId(v)}>
+                                <SelectTrigger className="h-8 text-xs min-w-40">
+                                    <SelectValue placeholder="Select epic" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {FIBONACCI_POINTS.map((point) => (
-                                        <SelectItem key={point} value={String(point)}>{point}</SelectItem>
+                                    {epics?.map((epic: any) => (
+                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Estimated Hours *</div>
-                            <Input
-                                type="number"
-                                value={estimatedHours}
-                                onChange={(e) => setEstimatedHours(e.target.value)}
-                                placeholder="0"
-                                className="h-8 text-xs w-20"
-                                min="0"
-                            />
+                            <div className="text-[10px] opacity-60 font-medium">T-Shirt Size</div>
+                            <Select value={tShirtSize} onValueChange={(v) => v != null && setTShirtSize(v)}>
+                                <SelectTrigger className="h-8 text-xs w-24">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {T_SHIRT_SIZES.map((s) => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Parent Feature *</div>
-                            
-                            <Select value={parentEpicId} onValueChange={(v) => v != null && setParentEpicId(v)}>
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select feature" />
+                            <div className="text-[10px] opacity-60 font-medium">Size UOM</div>
+                            <Select value={sizeUom} onValueChange={(v) => v != null && setSizeUom(v)}>
+                                <SelectTrigger className="h-8 text-xs w-36">
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {features?.issues?.map((epic: any) => (
-                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
+                                    {SIZE_UOMS.map((u) => (
+                                        <SelectItem key={u} value={u}>{u}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -291,12 +276,13 @@ export default function CreateStoryDialog({ projectId, sprintId, assignedToId }:
                                 className="h-8 text-xs"
                             />
                         </div>
+
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
                     <Button variant="outline" onClick={handleReset} className="h-8 text-xs">Reset</Button>
-                    <Button onClick={handleSubmit} className="h-8 text-xs">Create Story</Button>
+                    <Button onClick={handleSubmit} className="h-8 text-xs">Create Feature</Button>
                 </div>
             </DialogContent>
         </Dialog>

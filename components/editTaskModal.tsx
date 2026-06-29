@@ -188,8 +188,8 @@ export default function EditTaskDialog({ task, taskTime, iconOnly = false }: any
 
                     <div className="space-y-1">
                         <div className="text-[10px] opacity-60">Status</div>
-                         {/* @ts-expect-error */}
-                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                         
+                        <Select value={selectedStatus} onValueChange={(v) => v != null && setSelectedStatus(v)}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue>
                                     {options.find((s: any) => String(s.id) === selectedStatus)?.name}
@@ -207,7 +207,7 @@ export default function EditTaskDialog({ task, taskTime, iconOnly = false }: any
 
                     <div className="space-y-1">
                         <div className="text-[10px] opacity-60">Work Category *</div>
-                        <Select value={category} onValueChange={setCategory}>
+                        <Select value={category} onValueChange={(v) => v != null && setCategory(v)}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue />
                             </SelectTrigger>

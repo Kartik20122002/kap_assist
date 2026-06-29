@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -8,14 +9,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useRouter } from "next/navigation"
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 
 export function NavMain({
   time_entries
 }: {
   time_entries: any[]
 }) {
-  const router = useRouter()
+  const [open, setOpen] = useState(false)
 
   const grouped = Object.values(
     (time_entries ?? [])?.reduce((acc: any, entry: any) => {
@@ -35,21 +36,33 @@ export function NavMain({
 
   return (<>
     <SidebarGroup className="bg-accent/20 rounded-t-sm border border-b-0 border-accent">
-      <SidebarGroupLabel>Your Recent Timelogs</SidebarGroupLabel>
-      <SidebarMenu>
-        {grouped.map((item: any) => (
-          <SidebarMenuItem key={item.date}>
-            <SidebarMenuButton tooltip={item?.date} className="justify-between">
-              <span className="text-nowrap">
-                {item.hours}h
-              </span>
-              <span className="text-xs opacity-70">
-                {item.date}
-              </span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
+      <div
+        className="flex items-center justify-between cursor-pointer px-1"
+        onClick={() => setOpen(v => !v)}
+      >
+        <SidebarGroupLabel className="pointer-events-none">Your Recent Timelogs</SidebarGroupLabel>
+        {open
+          ? <IconChevronUp className="size-3 opacity-60 shrink-0 mr-1" />
+          : <IconChevronDown className="size-3 opacity-60 shrink-0 mr-1" />
+        }
+      </div>
+
+      {open && (
+        <SidebarMenu>
+          {grouped.map((item: any) => (
+            <SidebarMenuItem key={item.date}>
+              <SidebarMenuButton tooltip={item?.date} className="justify-between">
+                <span className="text-nowrap">
+                  {item.hours}h
+                </span>
+                <span className="text-xs opacity-70">
+                  {item.date}
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      )}
     </SidebarGroup>
 
   </>)

@@ -201,8 +201,8 @@ export default function VersionSprintModal({
                         <div className="text-[10px] opacity-60 font-medium">
                             Status <span className="text-red-500">*</span>
                         </div>
-                        {/* @ts-expect-error */}
-                        <Select value={status} onValueChange={setStatus}>
+                        
+                        <Select value={status} onValueChange={(v) => v != null && setStatus(v)}>
                             <SelectTrigger className="h-8 text-xs">
                                 <SelectValue />
                             </SelectTrigger>

@@ -140,8 +140,8 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
                         <div className="flex flex-col gap-4">
                             <div className="space-y-1">
                                 <div className="text-[10px] opacity-60 font-medium">Sprint *</div>
-                                {/* @ts-expect-error */}
-                                <Select value={selectedSprintId} onValueChange={setSelectedSprintId}>
+                                
+                                <Select value={selectedSprintId} onValueChange={(v) => v != null && setSelectedSprintId(v)}>
                                     <SelectTrigger className="h-8 text-xs w-full">
                                         <SelectValue placeholder={openSprints.length === 0 ? "No open sprints" : "Select sprint"} />
                                     </SelectTrigger>
@@ -155,8 +155,8 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
 
                             <div className="space-y-1">
                                 <div className="text-[10px] opacity-60 font-medium">Assign To (Optional)</div>
-                                {/* @ts-expect-error */}
-                                <Select value={selectedAssigneeId} onValueChange={setSelectedAssigneeId}>
+                                
+                                <Select value={selectedAssigneeId} onValueChange={(v) => v != null && setSelectedAssigneeId(v)}>
                                     <SelectTrigger className="h-8 text-xs w-full">
                                         <SelectValue placeholder="Keep unassigned" />
                                     </SelectTrigger>

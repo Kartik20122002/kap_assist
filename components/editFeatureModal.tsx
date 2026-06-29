@@ -13,76 +13,82 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { updateStory } from "@/lib/api/story"
-import { getFeatures } from "@/lib/api/feature"
+import { updateFeature } from "@/lib/api/feature"
+import { getEpics } from "@/lib/api/epic"
 import { getProjectMembers } from "@/lib/api/project"
-import { getTasks } from "@/lib/api/task"
 import { mutate } from "swr"
 import useSWR from "swr"
-import { ApiConfig, US_FLOW, getNextUSStatuses } from "@/lib/utils"
+import { ApiConfig, FEATURE_FLOW, getNextFeatureStatuses } from "@/lib/utils"
 import { toast } from "sonner"
 import { IconAdjustments } from "@tabler/icons-react"
 
-const FIBONACCI_POINTS = [1, 2, 3, 5, 8, 13]
+const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
+const T_SHIRT_SIZE_POINTS: Record<string, number> = { XS: 1, S: 1, M: 3, L: 5, XL: 8, XXL: 13 }
+const SIZE_UOMS = ["Pages", "Requirements", "Blocks", "Signals"]
 
-interface EditStoryDialogProps {
-    story: any
-    sprintId: any
+interface EditFeatureModalProps {
+    feature: any
     iconOnly?: boolean
 }
 
-export default function EditStoryDialog({ story, sprintId, iconOnly = false }: EditStoryDialogProps) {
+export default function EditFeatureModal({ feature, iconOnly = false }: EditFeatureModalProps) {
     const [open, setOpen] = useState(false)
 
     const getField = (id: number) =>
-        story.custom_fields?.find((f: any) => f.id === id)?.value ?? ""
+        feature.custom_fields?.find((f: any) => f.id === id)?.value ?? ""
 
-    const currentStatusObj = US_FLOW.find((s) => s.name === story.status?.name) ?? US_FLOW[0]
-    const nextStatuses = getNextUSStatuses(currentStatusObj.name)
+    const currentStatusObj = FEATURE_FLOW.find((s) => s.name === feature.status?.name) ?? FEATURE_FLOW[0]
+    const nextStatuses = getNextFeatureStatuses(currentStatusObj.name)
     const statusOptions = [currentStatusObj, ...nextStatuses]
 
-    const spentHours = story.spent_hours ?? 0
+    const projectId = feature.project?.id
 
-    const initEstimated = String(story.estimated_hours ?? "")
-    const initRemaining = (est: string) => Math.max(0, Number(est) - spentHours)
+    const init = () => ({
+        subject: feature.subject ?? "",
+        description: feature.description ?? "",
+        acceptanceCriteria: getField(72),
+        assignedToId: String(feature.assigned_to?.id ?? ""),
+        approvedById: getField(45),
+        parentEpicId: String(feature.parent?.id ?? ""),
+        tShirtSize: getField(4) || "M",
+        sizeUom: getField(6) || "Pages",
+        startDate: getField(43) || feature.start_date || "",
+        endDate: getField(44) || feature.due_date || "",
+        selectedStatus: currentStatusObj.name,
+    })
 
-    const [subject, setSubject] = useState(story.subject ?? "")
-    const [description, setDescription] = useState(story.description ?? "")
-    const [estimatedHours, setEstimatedHours] = useState(initEstimated)
-    const [storyPoints, setStoryPoints] = useState(String(story.rb_story_points ?? ""))
-    const [assignedToId, setAssignedToId] = useState(String(story.assigned_to?.id ?? ""))
-    const [parentEpicId, setParentEpicId] = useState(String(story.parent?.id ?? ""))
-    const [acceptanceCriteria, setAcceptanceCriteria] = useState(getField(72))
-    const [startDate, setStartDate] = useState(getField(43) || story.start_date || "")
-    const [endDate, setEndDate] = useState(getField(44) || story.due_date || "")
-    const [approvedById, setApprovedById] = useState(getField(45) || "")
-    const [selectedStatus, setSelectedStatus] = useState(String(currentStatusObj.name))
-
-    const projectId = story.project?.id
+    const [subject, setSubject] = useState(init().subject)
+    const [description, setDescription] = useState(init().description)
+    const [acceptanceCriteria, setAcceptanceCriteria] = useState(init().acceptanceCriteria)
+    const [assignedToId, setAssignedToId] = useState(init().assignedToId)
+    const [approvedById, setApprovedById] = useState(init().approvedById)
+    const [parentEpicId, setParentEpicId] = useState(init().parentEpicId)
+    const [tShirtSize, setTShirtSize] = useState(init().tShirtSize)
+    const [sizeUom, setSizeUom] = useState(init().sizeUom)
+    const [startDate, setStartDate] = useState(init().startDate)
+    const [endDate, setEndDate] = useState(init().endDate)
+    const [selectedStatus, setSelectedStatus] = useState(init().selectedStatus)
 
     useEffect(() => {
         if (!open) {
-            setSubject(story.subject ?? "")
-            setDescription(story.description ?? "")
-            setEstimatedHours(initEstimated)
-            setStoryPoints(String(story.rb_story_points ?? ""))
-            setAssignedToId(String(story.assigned_to?.id ?? ""))
-            setParentEpicId(String(story.parent?.id ?? ""))
-            setAcceptanceCriteria(getField(72))
-            setStartDate(getField(43) || story.start_date || "")
-            setEndDate(getField(44) || story.due_date || "")
-            setApprovedById(getField(45) || "")
-            setSelectedStatus(String(currentStatusObj.name))
+            const i = init()
+            setSubject(i.subject)
+            setDescription(i.description)
+            setAcceptanceCriteria(i.acceptanceCriteria)
+            setAssignedToId(i.assignedToId)
+            setApprovedById(i.approvedById)
+            setParentEpicId(i.parentEpicId)
+            setTShirtSize(i.tShirtSize)
+            setSizeUom(i.sizeUom)
+            setStartDate(i.startDate)
+            setEndDate(i.endDate)
+            setSelectedStatus(i.selectedStatus)
         }
     }, [open])
 
-    useEffect(() => {
-        if (storyPoints) setEstimatedHours(String(4.5 * Number(storyPoints)))
-    }, [storyPoints])
-
-    const { data: features } = useSWR(
-        projectId && open ? ["features", projectId] : null,
-        () => getFeatures(projectId),
+    const { data: epics } = useSWR(
+        projectId && open ? ["epics", projectId] : null,
+        () => getEpics(projectId),
         ApiConfig
     )
 
@@ -92,129 +98,94 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
         ApiConfig
     )
 
-    const { data: tasks } = useSWR(
-        open ? ["tasks", story.id] : null,
-        () => getTasks(story.id),
-        ApiConfig
-    )
-
-    const TASK_DONE_STATUSES = ["Closed"]
-
     const validate = () => {
         if (!subject.trim()) return "Subject is required"
         if (!description.trim()) return "Description is required"
-        if (!storyPoints) return "Story points are required"
-        if (!estimatedHours || Number(estimatedHours) < 0) return "Valid estimated hours required"
         if (!acceptanceCriteria.trim()) return "Acceptance criteria is required"
+        if (!assignedToId) return "Assignee is required"
+        if (!approvedById) return "Approved By is required"
+        if (!parentEpicId) return "Parent epic is required"
         if (!startDate) return "Start date is required"
         if (!endDate) return "End date is required"
         if (new Date(startDate) > new Date(endDate)) return "Start date cannot be after end date"
-        if (!assignedToId) return "Assignee is required"
-        if (!parentEpicId) return "Parent epic is required"
-        if (!approvedById) return "Approved By is required"
         return null
     }
 
     const handleSubmit = () => {
         const error = validate()
-        if (error) {
-            toast.error(error)
-            return
-        }
+        if (error) { toast.error(error); return }
 
-        const targetStatus = statusOptions.find((s) => String(s.name) === String(selectedStatus))
-
-        if (targetStatus?.name === "Closed") {
-            const openTasks = (tasks ?? []).filter(
-                (t: any) => !TASK_DONE_STATUSES.includes(t.status?.name)
-            )
-            if (openTasks.length > 0) {
-                const names = openTasks.map((t: any) => `"${t.subject}"`).join(", ")
-                toast.error("Cannot close story — open tasks remain", {
-                    description: `${openTasks.length} task(s) still open: ${names}`,
-                    duration: 7000,
-                })
-                return
-            }
-        }
-
-        const statusObj = statusOptions.find((s) => String(s.name) === selectedStatus)
-        const pts = Number(storyPoints)
-        const est = Number(estimatedHours)
-        const remaining = Math.max(0, est - spentHours)
+        const statusObj = statusOptions.find((s) => s.name === selectedStatus)
 
         const updates: any = {
             subject,
             description,
+            assigned_to_id: Number(assignedToId),
+            parent_issue_id: Number(parentEpicId),
+            status_id: statusObj?.id,
             start_date: startDate,
             due_date: endDate,
-            estimated_hours: est,
-            remaining_hours: remaining,
-            assigned_to_id: Number(assignedToId),
-            status_id: statusObj?.id,
-            rb_story_points: pts,
             custom_fields: [
-                { id: 72, value: acceptanceCriteria },
-                { id: 5,  value: String(pts) },
-                { id: 8,  value: String(pts) },
-                { id: 43, value: startDate },
-                { id: 44, value: endDate },
-                { id: 45, value: approvedById },
-                { id: 780, value: "NA" },
-                { id: 781, value: "NA" },
+                { id: 72,  value: acceptanceCriteria },
+                { id: 4,   value: tShirtSize },
+                { id: 5,   value: String(T_SHIRT_SIZE_POINTS[tShirtSize] ?? 1) },
+                { id: 8,   value: String(T_SHIRT_SIZE_POINTS[tShirtSize] ?? 1) },
+                { id: 6,   value: sizeUom },
+                { id: 43,  value: startDate },
+                { id: 44,  value: endDate },
+                { id: 45,  value: approvedById },
             ],
         }
 
-        if (parentEpicId) updates.parent_issue_id = Number(parentEpicId)
-
         toast.promise(
-            updateStory(story.id, updates),
+            updateFeature(feature.id, updates),
             {
-                loading: "Updating story…",
+                loading: "Updating feature…",
                 success: (ok) => {
-                    if (!ok) throw new Error("Story update failed")
-                    mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(sprintId))
+                    if (!ok) throw new Error("Feature update failed")
+                    mutate((key: any) => Array.isArray(key) && key[0] === "features")
                     setOpen(false)
-                    return "Story updated"
+                    return "Feature updated"
                 },
-                error: (err) => err?.message ?? "Failed to update story",
+                error: (err) => err?.message ?? "Failed to update feature",
             }
         )
     }
 
     const handleReset = () => {
-        setSubject(story.subject ?? "")
-        setDescription(story.description ?? "")
-        setEstimatedHours(initEstimated)
-        setStoryPoints(String(story.rb_story_points ?? ""))
-        setAssignedToId(String(story.assigned_to?.id ?? ""))
-        setParentEpicId(String(story.parent?.id ?? ""))
-        setAcceptanceCriteria(getField(72))
-        setStartDate(getField(43) || story.start_date || "")
-        setEndDate(getField(44) || story.due_date || "")
-        setApprovedById(getField(45) || "")
-        setSelectedStatus(String(currentStatusObj.name))
+        const i = init()
+        setSubject(i.subject)
+        setDescription(i.description)
+        setAcceptanceCriteria(i.acceptanceCriteria)
+        setAssignedToId(i.assignedToId)
+        setApprovedById(i.approvedById)
+        setParentEpicId(i.parentEpicId)
+        setTShirtSize(i.tShirtSize)
+        setSizeUom(i.sizeUom)
+        setStartDate(i.startDate)
+        setEndDate(i.endDate)
+        setSelectedStatus(i.selectedStatus)
     }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
-                  iconOnly ? (
-                    <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
-                      <IconAdjustments className="size-4.5" />
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="default" className="h-6 text-[10px] px-2">
-                        Update
-                    </Button>
-                  )
+                    iconOnly ? (
+                        <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
+                            <IconAdjustments className="size-4.5" />
+                        </Button>
+                    ) : (
+                        <Button size="sm" variant="default" className="h-6 text-[10px] px-2">
+                            Update
+                        </Button>
+                    )
                 }
             />
 
             <DialogContent className="w-[95vw] sm:min-w-5/6 max-w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
-                    <DialogTitle className="text-sm">Update User Story</DialogTitle>
+                    <DialogTitle className="text-sm">Update Feature <span className="opacity-50 font-normal">#{feature.id}</span></DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4">
@@ -224,7 +195,7 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                         <Input
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
-                            placeholder="Enter story subject"
+                            placeholder="Enter feature subject"
                             className="h-8 text-xs"
                         />
                     </div>
@@ -235,7 +206,7 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Enter story description"
+                                placeholder="Enter feature description"
                                 className="text-xs h-28 sm:h-32 overflow-auto resize-none w-full"
                             />
                         </div>
@@ -254,14 +225,13 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
 
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Status *</div>
-                            
                             <Select value={selectedStatus} onValueChange={(v) => v != null && setSelectedStatus(v)}>
                                 <SelectTrigger className="h-8 text-xs w-36">
                                     <SelectValue>{selectedStatus}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {statusOptions.map((s) => (
-                                        <SelectItem key={s.id} value={String(s.name)}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -269,12 +239,11 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
 
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Assigned To *</div>
-                            
                             <Select value={assignedToId} onValueChange={(v) => v != null && setAssignedToId(v)}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
                                     <SelectValue>
-                                        {members?.find((m: any) => String(m.id) === String(assignedToId))?.name
-                                            ?? story.assigned_to?.name
+                                        {members?.find((m: any) => String(m.id) === assignedToId)?.name
+                                            ?? feature.assigned_to?.name
                                             ?? "Select member"}
                                     </SelectValue>
                                 </SelectTrigger>
@@ -282,9 +251,9 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                                     {members?.map((m: any) => (
                                         <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
                                     ))}
-                                    {!members && story.assigned_to && (
-                                        <SelectItem value={String(story.assigned_to.id)}>
-                                            {story.assigned_to.name}
+                                    {!members && feature.assigned_to && (
+                                        <SelectItem value={String(feature.assigned_to.id)}>
+                                            {feature.assigned_to.name}
                                         </SelectItem>
                                     )}
                                 </SelectContent>
@@ -293,7 +262,6 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
 
                         <div className="space-y-1">
                             <div className="text-[10px] opacity-60 font-medium">Approved By *</div>
-                            
                             <Select value={approvedById} onValueChange={(v) => v != null && setApprovedById(v)}>
                                 <SelectTrigger className="h-8 text-xs min-w-36">
                                     <SelectValue>
@@ -309,42 +277,47 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Story Points *</div>
-                            
-                            <Select value={storyPoints} onValueChange={(v) => v != null && setStoryPoints(v)}>
-                                <SelectTrigger className="h-8 text-xs w-20">
-                                    <SelectValue placeholder="Points" />
+                            <div className="text-[10px] opacity-60 font-medium">Parent Epic *</div>
+                            <Select value={parentEpicId} onValueChange={(v) => v != null && setParentEpicId(v)}>
+                                <SelectTrigger className="h-8 text-xs min-w-40">
+                                    <SelectValue placeholder="Select epic" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {FIBONACCI_POINTS.map((point) => (
-                                        <SelectItem key={point} value={String(point)}>{point}</SelectItem>
+                                    {epics?.map((epic: any) => (
+                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
+                                    ))}
+                                    {!epics && feature.parent && (
+                                        <SelectItem value={String(feature.parent.id)}>
+                                            #{feature.parent.id}
+                                        </SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="text-[10px] opacity-60 font-medium">T-Shirt Size</div>
+                            <Select value={tShirtSize} onValueChange={(v) => v != null && setTShirtSize(v)}>
+                                <SelectTrigger className="h-8 text-xs w-24">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {T_SHIRT_SIZES.map((s) => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Estimated Hours *</div>
-                            <Input
-                                type="number"
-                                value={estimatedHours}
-                                onChange={(e) => setEstimatedHours(e.target.value)}
-                                placeholder="0"
-                                className="h-8 text-xs w-20"
-                                min="0"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="text-[10px] opacity-60 font-medium">Parent Feature *</div>
-                            
-                            <Select value={parentEpicId} onValueChange={(v) => v != null && setParentEpicId(v)}>
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select feature" />
+                            <div className="text-[10px] opacity-60 font-medium">Size UOM</div>
+                            <Select value={sizeUom} onValueChange={(v) => v != null && setSizeUom(v)}>
+                                <SelectTrigger className="h-8 text-xs w-36">
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {features?.issues?.map((epic: any) => (
-                                        <SelectItem key={epic.id} value={String(epic.id)}>{epic.subject}</SelectItem>
+                                    {SIZE_UOMS.map((u) => (
+                                        <SelectItem key={u} value={u}>{u}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -369,12 +342,13 @@ export default function EditStoryDialog({ story, sprintId, iconOnly = false }: E
                                 className="h-8 text-xs"
                             />
                         </div>
+
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
                     <Button variant="outline" onClick={handleReset} className="h-8 text-xs">Reset</Button>
-                    <Button onClick={handleSubmit} className="h-8 text-xs">Update Story</Button>
+                    <Button onClick={handleSubmit} className="h-8 text-xs">Update Feature</Button>
                 </div>
             </DialogContent>
         </Dialog>

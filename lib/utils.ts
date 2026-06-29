@@ -79,6 +79,22 @@ export const getNextUSStatuses = (current: string) => {
   return [next]
 }
 
+export const FEATURE_FLOW = [
+  { id: 1,  name: "New" },
+  { id: 7,  name: "Assigned" },
+  { id: 8,  name: "Ready" },
+  { id: 2,  name: "In Progress" },
+  { id: 9,  name: "Implemented" },
+  { id: 5,  name: "Closed" },
+]
+
+export const getNextFeatureStatuses = (currentName: string) => {
+  const idx = FEATURE_FLOW.findIndex((s) => s.name === currentName)
+  const next = FEATURE_FLOW[idx + 1]
+  if (!next) return []
+  return [next]
+}
+
 // Bug tracker (id=15) status graph
 const BUG_STATUS_MAP: Record<string, { id: number; name: string }> = {
   "New":         { id: 1,  name: "New" },

@@ -20,7 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { IconSelector, IconSparkles, IconRosetteDiscountCheck, IconLogout, IconStack2, IconBug } from "@tabler/icons-react"
+import { IconSelector, IconSparkles, IconRosetteDiscountCheck, IconLogout, IconStack2, IconBug, IconLayoutList } from "@tabler/icons-react"
 import { Badge } from "./ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -126,6 +126,16 @@ export function NavUser({
               <DropdownMenuItem onClick={() => router.push("/app/backlog")} className="cursor-pointer">
                 <IconStack2 />
                 Backlog
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            {/* Features */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => router.push("/app/features")} className="cursor-pointer">
+                <IconLayoutList />
+                Features
               </DropdownMenuItem>
             </DropdownMenuGroup>
 
