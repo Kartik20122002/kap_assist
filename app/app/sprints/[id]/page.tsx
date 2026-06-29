@@ -14,6 +14,7 @@ import { toast } from "sonner"
 import { getSprintById } from "@/lib/api/sprint"
 import CreateStoryDialog from "@/components/addStoryModal"
 import { getStoriesBySprint, updateStory } from "@/lib/api/story"
+import { US_FLOW } from "@/lib/utils"
 import VersionSprintModal from "@/components/versionSprintModal"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -77,27 +78,48 @@ export default function SprintPage() {
   ) ?? []
 
   const closeAllStories = async () => {
-    const today = new Date().toISOString().split("T")[0]
     const openStories = visibleStories.filter((s: any) => s.status?.name !== "Closed")
     if (openStories.length === 0) {
       toast.info("No open stories to close")
       setCloseStoriesOpen(false)
       return
     }
+
     setClosingStories(true)
-    let closed = 0
+    setCloseStoriesOpen(false)
+
+    const closedIdx = US_FLOW.findIndex((s) => s.name === "Closed")
+    let closedCount = 0
+
     for (const story of openStories) {
-      try {
-        await updateStory(story.id, { status_id: 5, due_date: story.due_date || today })
-        closed++
-      } catch {
-        toast.error(`Failed to close "${story.subject}"`)
+      const currentIdx = US_FLOW.findIndex((s) => s.id === story.status?.id)
+      if (currentIdx === -1 || currentIdx >= closedIdx) continue
+
+      const steps = US_FLOW.slice(currentIdx + 1, closedIdx + 1)
+      const toastId = `transition-${story.id}`
+      toast.loading(`Transitioning "${story.subject}"…`, { id: toastId })
+
+      let failed = false
+      for (const step of steps) {
+        try {
+          await updateStory(story.id, { status_id: step.id })
+          toast.loading(`"${story.subject}" → ${step.name}`, { id: toastId })
+        } catch {
+          toast.error(`Failed at "${step.name}" for "${story.subject}"`, { id: toastId })
+          failed = true
+          break
+        }
+      }
+
+      if (!failed) {
+        closedCount++
+        toast.success(`"${story.subject}" closed`, { id: toastId })
       }
     }
+
     mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(id))
     setClosingStories(false)
-    setCloseStoriesOpen(false)
-    toast.success(`Closed ${closed} of ${openStories.length} stories`)
+    toast.success(`Transitioned ${closedCount} of ${openStories.length} stories to Closed`)
   }
 
   if (!data) return <div className="p-4">Loading...</div>
@@ -214,9 +236,9 @@ export default function SprintPage() {
             <DialogTitle className="text-sm">Close All Stories?</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            This will close <span className="font-semibold text-foreground">
+            This will sequentially transition <span className="font-semibold text-foreground">
               {visibleStories.filter((s: any) => s.status?.name !== "Closed").length}
-            </span> open {visibleStories.filter((s: any) => s.status?.name !== "Closed").length === 1 ? "story" : "stories"} one by one. This cannot be undone.
+            </span> open {visibleStories.filter((s: any) => s.status?.name !== "Closed").length === 1 ? "story" : "stories"} step-by-step through the full US flow until Closed. This cannot be undone.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="h-8 text-xs" onClick={() => setCloseStoriesOpen(false)} disabled={closingStories}>

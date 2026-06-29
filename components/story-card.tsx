@@ -1,10 +1,11 @@
 "use client"
 import useSWR from "swr"
 import { getTasks, updateTask } from "@/lib/api/task"
+import { updateStory } from "@/lib/api/story"
 import { getTimeEntries } from "@/lib/api/time"
 import TimeLogDialog from "./timelogModal"
 import TaskNoteDialog from "./tasknoteModal"
-import { ApiConfig, statusStyles } from "@/lib/utils"
+import { ApiConfig, statusStyles, US_FLOW, TASK_FLOW } from "@/lib/utils"
 import EditTaskDialog from "./editTaskModal"
 import CreateTaskDialog from "./addTaskModel"
 import EditStoryDialog from "./editStoryModal"
@@ -91,30 +92,77 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
   const [closeTasksOpen, setCloseTasksOpen] = useState(false)
   const [closingTasks, setClosingTasks] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
 
   const openTasks = tasks?.filter((t: any) => t.status?.name !== "Closed") ?? []
 
+  const transitionToClose = async () => {
+    const currentIdx = US_FLOW.findIndex((s) => s.id === story.status?.id)
+    const closedIdx = US_FLOW.findIndex((s) => s.name === "Closed")
+    if (currentIdx === -1 || currentIdx >= closedIdx) return
+
+    const steps = US_FLOW.slice(currentIdx + 1, closedIdx + 1)
+    setTransitioning(true)
+    const toastId = toast.loading(`Transitioning "${story.subject}"…`)
+
+    for (const step of steps) {
+      try {
+        await updateStory(story.id, { status_id: step.id })
+        toast.loading(`→ ${step.name}`, { id: toastId })
+      } catch {
+        toast.error(`Failed at step "${step.name}"`, { id: toastId })
+        setTransitioning(false)
+        return
+      }
+    }
+
+    mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories")
+    toast.success(`"${story.subject}" is now Closed`, { id: toastId })
+    setTransitioning(false)
+  }
+
   const closeAllTasks = async () => {
-    const today = new Date().toISOString().split("T")[0]
     if (openTasks.length === 0) {
       toast.info("No open tasks to close")
       setCloseTasksOpen(false)
       return
     }
+
     setClosingTasks(true)
-    let closed = 0
+    setCloseTasksOpen(false)
+
+    const closedIdx = TASK_FLOW.findIndex((s) => s.name === "Closed")
+    let closedCount = 0
+
     for (const task of openTasks) {
-      try {
-        await updateTask(task.id, { status_id: 5, due_date: task.due_date || today })
-        closed++
-      } catch {
-        toast.error(`Failed to close "${task.subject}"`)
+      const currentIdx = TASK_FLOW.findIndex((s) => s.id === task.status?.id)
+      if (currentIdx === -1 || currentIdx >= closedIdx) continue
+
+      const steps = TASK_FLOW.slice(currentIdx + 1, closedIdx + 1)
+      const toastId = `transition-task-${task.id}`
+      toast.loading(`Transitioning "${task.subject}"…`, { id: toastId })
+
+      let failed = false
+      for (const step of steps) {
+        try {
+          await updateTask(task.id, { status_id: step.id })
+          toast.loading(`"${task.subject}" → ${step.name}`, { id: toastId })
+        } catch {
+          toast.error(`Failed at "${step.name}" for "${task.subject}"`, { id: toastId })
+          failed = true
+          break
+        }
+      }
+
+      if (!failed) {
+        closedCount++
+        toast.success(`"${task.subject}" closed`, { id: toastId })
       }
     }
+
     mutate(["tasks", story.id])
     setClosingTasks(false)
-    setCloseTasksOpen(false)
-    toast.success(`Closed ${closed} of ${openTasks.length} tasks`)
+    toast.success(`Transitioned ${closedCount} of ${openTasks.length} tasks to Closed`)
   }
 
   return (
@@ -172,16 +220,29 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
         {/* Task list — indented with left border to show hierarchy */}
         {tasks?.length > 0 && (
           <div className="mt-1 ml-2 pl-2.5 border-l-2 border-border/40">
-            {isAdmin && openTasks.length > 0 && (
-              <div className="flex justify-end pb-1">
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="h-6 px-3 text-[10px]"
-                  onClick={() => setCloseTasksOpen(true)}
-                >
-                  Close All Tasks
-                </Button>
+            {isAdmin && (openTasks.length > 0 || story.status?.name !== "Closed") && (
+              <div className="flex justify-end gap-2 pb-1">
+                {story.status?.name !== "Closed" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-3 text-[10px]"
+                    onClick={transitionToClose}
+                    disabled={transitioning}
+                  >
+                    {transitioning ? "Transitioning…" : "Transition to Close"}
+                  </Button>
+                )}
+                {openTasks.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-6 px-3 text-[10px]"
+                    onClick={() => setCloseTasksOpen(true)}
+                  >
+                    Close All Tasks
+                  </Button>
+                )}
               </div>
             )}
             <div className="divide-y divide-border/40">
@@ -215,9 +276,9 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
             <DialogTitle className="text-sm">Close All Tasks?</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            This will close <span className="font-semibold text-foreground">{openTasks.length}</span>{" "}
+            This will sequentially transition <span className="font-semibold text-foreground">{openTasks.length}</span>{" "}
             open {openTasks.length === 1 ? "task" : "tasks"} in{" "}
-            <span className="font-semibold text-foreground">"{story.subject}"</span> one by one. This cannot be undone.
+            <span className="font-semibold text-foreground">"{story.subject}"</span> step-by-step through the full task flow until Closed. This cannot be undone.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="h-8 text-xs" onClick={() => setCloseTasksOpen(false)} disabled={closingTasks}>
