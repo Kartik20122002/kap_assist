@@ -92,6 +92,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
 
   const [closeTasksOpen, setCloseTasksOpen] = useState(false)
   const [closingTasks, setClosingTasks] = useState(false)
+  const [transitionOpen, setTransitionOpen] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
 
   const openTasks = tasks?.filter((t: any) => t.status?.name !== "Closed") ?? []
@@ -227,7 +228,7 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
                     size="sm"
                     variant="outline"
                     className="h-6 px-3 text-[10px]"
-                    onClick={transitionToClose}
+                    onClick={() => setTransitionOpen(true)}
                     disabled={transitioning}
                   >
                     {transitioning ? "Transitioning…" : "Transition to Close"}
@@ -269,6 +270,28 @@ export default function StoryCard({ story, isAdmin }: { story: any, isAdmin: any
         )}
 
       </div>
+
+      <Dialog open={transitionOpen} onOpenChange={setTransitionOpen}>
+        <DialogContent className="max-w-sm p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Transition to Close?</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            This will step <span className="font-semibold text-foreground">"{story.subject}"</span> through{" "}
+            <span className="font-semibold text-foreground">
+              {story.status?.name} → … → Closed
+            </span> sequentially. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" className="h-8 text-xs" onClick={() => setTransitionOpen(false)} disabled={transitioning}>
+              Cancel
+            </Button>
+            <Button className="h-8 text-xs" onClick={() => { setTransitionOpen(false); transitionToClose() }} disabled={transitioning}>
+              Confirm
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={closeTasksOpen} onOpenChange={setCloseTasksOpen}>
         <DialogContent className="max-w-sm p-6">

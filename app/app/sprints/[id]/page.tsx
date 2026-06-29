@@ -19,7 +19,7 @@ import VersionSprintModal from "@/components/versionSprintModal"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { mutate } from "swr"
-import { IconChevronDown } from "@tabler/icons-react"
+import { IconChevronDown, IconRefresh } from "@tabler/icons-react"
 
 export default function SprintPage() {
 
@@ -76,6 +76,15 @@ export default function SprintPage() {
   const visibleStories = userStories?.filter((story: any) =>
     selectedUser ? story?.assigned_to?.name === selectedUser : true
   ) ?? []
+
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(id))
+    await mutate((key: any) => Array.isArray(key) && key[0] === "tasks")
+    setRefreshing(false)
+  }
 
   const closeAllStories = async () => {
     const openStories = visibleStories.filter((s: any) => s.status?.name !== "Closed")
@@ -193,16 +202,27 @@ export default function SprintPage() {
         {/* Section header */}
         <div className="flex items-center justify-between gap-2 py-2 sm:px-4 sm:py-3">
           <span className="text-sm font-medium">User Stories & Tasks</span>
-          {isAdmin && (
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
-              variant="destructive"
-              className="h-7 px-3 text-xs"
-              onClick={() => setCloseStoriesOpen(true)}
+              variant="ghost"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleRefresh}
+              disabled={refreshing}
             >
-              Close All Stories
+              <IconRefresh className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-          )}
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 px-3 text-xs"
+                onClick={() => setCloseStoriesOpen(true)}
+              >
+                Close All Stories
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* User filter */}
