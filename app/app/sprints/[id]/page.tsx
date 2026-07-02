@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useParams } from "next/navigation"
@@ -16,6 +15,7 @@ import CreateStoryDialog from "@/components/addStoryModal"
 import { getStoriesBySprint, updateStory } from "@/lib/api/story"
 import { US_FLOW } from "@/lib/utils"
 import VersionSprintModal from "@/components/versionSprintModal"
+import FeatureBreakdownModal from "@/components/featureBreakdownModal"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { mutate } from "swr"
@@ -50,7 +50,7 @@ export default function SprintPage() {
         description: isAdmin ? "Consider closing or extending this sprint." : "Contact your admin to close or extend this sprint.",
       })
     }
-  }, [version?.due_date, version?.status])
+  }, [version?.due_date, version?.status, version?.id, version?.name, today, isAdmin])
 
   useEffect(() => {
     if (userStories !== undefined && userStories.length === 0) {
@@ -59,19 +59,17 @@ export default function SprintPage() {
         description: "Add user stories to start planning work for this sprint.",
       })
     }
-  }, [userStories])
+  }, [userStories, version?.id, version?.name])
 
   const users = [...new Set(userStories?.map((us: any) => us?.assigned_to?.name))]
-  const [selectedUser, setSelectedUser] = useState<string | null>(null)
+  const [selectedUserOverride, setSelectedUserOverride] = useState<string | null>(null)
   const [closeStoriesOpen, setCloseStoriesOpen] = useState(false)
   const [closingStories, setClosingStories] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
-  useEffect(() => {
-    if (user && !selectedUser) {
-      setSelectedUser(`${user.firstname} ${user.lastname}`)
-    }
-  }, [user])
+  const defaultUser = user ? `${user.firstname} ${user.lastname}` : null
+  const selectedUser = selectedUserOverride ?? defaultUser
+  const setSelectedUser = setSelectedUserOverride
 
   const visibleStories = userStories?.filter((story: any) =>
     selectedUser ? story?.assigned_to?.name === selectedUser : true
@@ -203,6 +201,7 @@ export default function SprintPage() {
         <div className="flex items-center justify-between gap-2 py-2 sm:px-4 sm:py-3">
           <span className="text-sm font-medium">User Stories & Tasks</span>
           <div className="flex items-center gap-2">
+            <FeatureBreakdownModal projectId={projectId} stories={userStories ?? []} />
             <Button
               size="sm"
               variant="ghost"

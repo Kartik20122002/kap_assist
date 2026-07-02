@@ -2,7 +2,6 @@ import { api } from "./client"
 
 export const getFeatures = async (projectId: number) => {
   const res = await api.get(`/features?project_id=${projectId}`)
-  console.log("[features] api response:", res?.data)
   return res?.data
 }
 

@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
 
     if (res.status === 200) {
       const data = await res.json()
-      console.log("[features] response:", JSON.stringify(data, null, 2))
       return Response.json(data)
     } else {
       return Response.json({ issues: [] })
