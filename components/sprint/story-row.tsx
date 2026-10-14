@@ -37,7 +37,6 @@ import { StatusMenu } from "./status-menu"
 import { ReopenButton } from "./reopen-button"
 import { TaskRow } from "./task-row"
 import { HealthMarker } from "./health-marker"
-import { FeatureChip } from "./feature-chip"
 import { canReopen, runStatusJump, STATUS } from "@/lib/workflow"
 import { storyEstimate, storyPoints, storySpent, type HealthItem } from "@/lib/health"
 import { refreshSprintData } from "@/lib/refresh"
@@ -132,10 +131,11 @@ export function StoryRow({
               <span className="mr-1.5 text-[11px] text-muted-foreground tabular-nums">#{story.id}</span>
               <span className="text-sm leading-snug font-medium">{story.subject}</span>
             </button>
-            <div className="flex flex-wrap items-center gap-2">
-              <FeatureChip story={story} canEdit={isAdmin} />
-              <HealthMarker items={storyHealth} />
-            </div>
+            {storyHealth.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <HealthMarker items={storyHealth} />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

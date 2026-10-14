@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import BacklogEditStoryModal from "@/components/backlogEditStoryModal"
 import BacklogAddToSprintModal, { getMissingFields } from "@/components/backlogAddToSprintModal"
 import { StatusMenu } from "@/components/sprint/status-menu"
-import { FeatureChip } from "@/components/sprint/feature-chip"
 import { storyPoints } from "@/lib/health"
 import { initials } from "@/lib/session"
 import { cn } from "@/lib/utils"
@@ -50,7 +49,6 @@ export function BacklogRow({
             <span className="text-sm leading-snug font-medium">{story.subject}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <FeatureChip story={story} canEdit={isAdmin} />
             {missing.length === 0 ? (
               <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
                 <IconCircleCheck className="size-3.5" /> Ready for sprint

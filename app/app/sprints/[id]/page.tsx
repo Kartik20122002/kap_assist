@@ -81,10 +81,12 @@ export default function SprintPage() {
   const me = userDisplayName(user)
 
   // Keep the sidebar's project in sync when a sprint link from another project is opened
-  const { projectId: storedProjectId, setProjectId } = useProjectStore()
+  // Only when the opened sprint belongs to another project — never when the user
+  // switches project from the sidebar (that would snap the selection back).
+  const setProjectId = useProjectStore((s) => s.setProjectId)
   useEffect(() => {
-    if (projectId && storedProjectId !== projectId) setProjectId(projectId)
-  }, [projectId, storedProjectId, setProjectId])
+    if (projectId && useProjectStore.getState().projectId !== projectId) setProjectId(projectId)
+  }, [projectId, setProjectId])
 
   const { data: stories } = useSWR(
     version ? ["sprintStories", sprintId, isAdmin] : null,
