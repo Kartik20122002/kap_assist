@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/api/user"
 import { getBacklogStories } from "@/lib/api/story"
 import { getProjects } from "@/lib/api/project"
-import { ApiConfig, statusStyles } from "@/lib/utils"
+import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
 import BacklogCreateStoryModal from "@/components/backlogCreateStoryModal"
 import BacklogEditStoryModal from "@/components/backlogEditStoryModal"
 import BacklogAddToSprintModal from "@/components/backlogAddToSprintModal"
+import { StatusMenu } from "@/components/sprint/status-menu"
+import { FeatureChip } from "@/components/sprint/feature-chip"
 
 const PAGE_SIZE = 15
 
@@ -177,9 +179,8 @@ export function BacklogStoryCard({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <span className={`px-2 rounded-full text-xs ${statusStyles[story?.status?.name] ?? "bg-muted text-muted-foreground"}`}>
-              {story.status?.name}
-            </span>
+            <FeatureChip story={story} canEdit={isAdmin} />
+            <StatusMenu issue={story} canEdit={isAdmin} />
             {isAdmin && <BacklogEditStoryModal story={story} />}
             {isAdmin && showAddToSprint && story.tracker?.id === 5 && (
               <BacklogAddToSprintModal story={story} projectId={projectId} />

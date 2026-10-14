@@ -4,10 +4,16 @@ export async function GET(req: NextRequest) {
   try {
     const apiKey = req.headers.get("x-api-key")
     const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
-    const project_id = req.nextUrl.searchParams.get("project_id")
-    const user_id = req.nextUrl.searchParams.get("user_id") ?? "me"
+    // user_id defaults to "me"; "all" drops the filter (e.g. a task's full history)
+    const params = new URLSearchParams()
+    const userId = req.nextUrl.searchParams.get("user_id") ?? "me"
+    if (userId !== "all") params.set("user_id", userId)
+    for (const key of ["project_id", "issue_id", "from", "to", "limit", "offset"]) {
+      const value = req.nextUrl.searchParams.get(key)
+      if (value) params.set(key, value)
+    }
 
-    let url = `${baseUrl}/time_entries.json?user_id=${user_id}&project_id=${project_id}`
+    let url = `${baseUrl}/time_entries.json?${params}`
 
     const res = await fetch(
       url,

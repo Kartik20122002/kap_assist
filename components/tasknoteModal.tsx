@@ -1,182 +1,160 @@
 "use client"
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useRef, useState } from "react"
+import { toast } from "sonner"
+import { IconNotes, IconPaperclip, IconX } from "@tabler/icons-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { updateTask } from "@/lib/api/task"
-import { uploadAttachments } from "@/lib/api/file"
-import { toast } from "sonner"
-import { IconNotes } from "@tabler/icons-react"
+import { Kbd } from "@/components/ui/kbd"
+import { FormField } from "@/components/forms/form-field"
+import { updateIssue } from "@/lib/api/issue"
+import { todayLocal } from "@/lib/date"
 
-export default function TaskNoteDialog({ taskId, iconOnly = false }: any) {
-    const today = new Date().toISOString().split("T")[0]
+type Props = {
+  taskId: number
+  iconOnly?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
+}
 
-    const [open, setOpen] = useState(false)
-    const [date, setDate] = useState(today)
-    const [update, setUpdate] = useState("")
-    const [tomorrow, setTomorrow] = useState("")
-    const [blockers, setBlockers] = useState("")
+// Daily update note on a task (same text format KAP already uses).
+export default function TaskNoteDialog({ taskId, iconOnly = false, open: openProp, onOpenChange, hideTrigger = false }: Props) {
+  const [innerOpen, setInnerOpen] = useState(false)
+  const open = openProp ?? innerOpen
+  const setOpen = onOpenChange ?? setInnerOpen
 
-    // Attachments: each entry holds the File + an optional description
-    const [attachments, setAttachments] = useState<{ file: File; description: string }[]>([])
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            iconOnly ? (
+              <Button size="icon-sm" variant="ghost" className="text-muted-foreground hover:text-foreground" aria-label="Add note" />
+            ) : (
+              <Button size="sm" variant="outline" />
+            )
+          }
+        >
+          <IconNotes />
+          {!iconOnly && "Note"}
+        </DialogTrigger>
+      )}
+      <DialogContent className="flex max-h-[92vh] w-[min(40rem,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+        {open && <NoteForm taskId={taskId} onDone={() => setOpen(false)} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-    const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const picked = Array.from(e.target.files ?? [])
-        setAttachments(prev => [
-            ...prev,
-            ...picked.map(f => ({ file: f, description: f.name })),
-        ])
-        // reset so the same file can be picked again after removal
-        e.target.value = ""
+function NoteForm({ taskId, onDone }: { taskId: number; onDone: () => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [date, setDate] = useState(todayLocal())
+  const [update, setUpdate] = useState("")
+  const [tomorrow, setTomorrow] = useState("")
+  const [blockers, setBlockers] = useState("")
+  const [files, setFiles] = useState<{ file: File; description: string }[]>([])
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    if (!update.trim()) {
+      toast.error("Write what was done")
+      return
     }
+    const notes = [
+      `+*Date:*+ ${date}`,
+      `+*Task Update:*+ ${update || "N/A"}`,
+      `+*Tomorrow's Plan:*+ ${tomorrow || "N/A"}`,
+      `+*Risks/Roadblocks:*+ ${blockers || "N/A"}`,
+    ].join("\n\n")
 
-    const removeAttachment = (idx: number) =>
-        setAttachments(prev => prev.filter((_, i) => i !== idx))
-
-    const updateDescription = (idx: number, val: string) =>
-        setAttachments(prev =>
-            prev.map((a, i) => (i === idx ? { ...a, description: val } : a))
-        )
-
-    const buildNote = () => {
-        return `
-        +*Date:*+ ${date}
-
-        +*Task Update:*+ ${update || "N/A"}
-
-        +*Tomorrow's Plan:*+ ${tomorrow || "N/A"}
-
-        +*Risks/Roadblocks:*+ ${blockers || "N/A"}`
+    setSaving(true)
+    try {
+      await updateIssue(taskId, { notes }, files)
+      toast.success(`Note added to #${taskId}`)
+      onDone()
+    } catch (e: any) {
+      toast.error("Couldn't add note", { description: e?.message })
+    } finally {
+      setSaving(false)
     }
+  }
 
-    const handleSubmit = async () => {
-        const notes = buildNote()
-
-        let uploads: any[] = []
-        if (attachments.length > 0) {
-            uploads = await uploadAttachments(attachments)
+  return (
+    <form
+      className="flex min-h-0 flex-1 flex-col"
+      onSubmit={(e) => {
+        e.preventDefault()
+        submit()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault()
+          submit()
         }
+      }}
+    >
+      <DialogHeader className="shrink-0 border-b px-5 py-3.5">
+        <DialogTitle className="text-sm">Update note · #{taskId}</DialogTitle>
+        <DialogDescription>Posted as a comment on the task in KAP</DialogDescription>
+      </DialogHeader>
 
-        toast.promise(
-            updateTask(taskId, {
-                notes,
-                ...(uploads.length > 0 ? { uploads } : {}),
-            }),
-            {
-                loading: "Adding note…",
-                success: () => {
-                    setOpen(false)
-                    setUpdate("")
-                    setTomorrow("")
-                    setBlockers("")
-                    setAttachments([])
-                    return "Note added"
-                },
-                error: (err) => err?.message ?? "Failed to add note",
-            }
-        )
-    }
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+        <FormField label="Date" className="w-40">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 text-xs" />
+        </FormField>
+        <FormField label="What was done" required>
+          <Textarea autoFocus value={update} onChange={(e) => setUpdate(e.target.value)} className="min-h-20 text-xs" />
+        </FormField>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Tomorrow's plan">
+            <Textarea value={tomorrow} onChange={(e) => setTomorrow(e.target.value)} className="min-h-16 text-xs" />
+          </FormField>
+          <FormField label="Risks / blockers">
+            <Textarea value={blockers} onChange={(e) => setBlockers(e.target.value)} className="min-h-16 text-xs" />
+          </FormField>
+        </div>
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger
-                render={
-                  iconOnly ? (
-                    <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
-                      <IconNotes className="size-4.5" />
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" className="h-6 px-4 text-[10px]">
-                        Note
-                    </Button>
-                  )
-                }
-            />
+        <div className="space-y-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+            <IconPaperclip /> Attach files
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            hidden
+            onChange={(e) => {
+              const picked = Array.from(e.target.files ?? [])
+              setFiles((prev) => [...prev, ...picked.map((f) => ({ file: f, description: f.name }))])
+              e.target.value = ""
+            }}
+          />
+          {files.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-[11px]">
+              <IconPaperclip className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="flex-1 truncate">{f.file.name}</span>
+              <Button type="button" size="icon-sm" variant="ghost" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}>
+                <IconX />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
 
-            <DialogContent className="max-w-xl p-4 space-y-3">
-                <DialogHeader>
-                    <DialogTitle className="text-sm">Add Note</DialogTitle>
-                </DialogHeader>
-
-                {/* Date */}
-                <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="h-8 text-xs"
-                />
-
-                {/* Update */}
-                <Textarea
-                    placeholder="Task update"
-                    value={update}
-                    onChange={(e) => setUpdate(e.target.value)}
-                    className="text-xs"
-                />
-
-                {/* Tomorrow */}
-                <Textarea
-                    placeholder="Tomorrow plan"
-                    value={tomorrow}
-                    onChange={(e) => setTomorrow(e.target.value)}
-                    className="text-xs"
-                />
-
-                {/* Blockers */}
-                <Textarea
-                    placeholder="Blockers"
-                    value={blockers}
-                    onChange={(e) => setBlockers(e.target.value)}
-                    className="text-xs"
-                />
-
-                {/* ── Attachments ── */}
-                <div className="space-y-2">
-                    <div className="text-[10px] opacity-60">Attachments</div>
-
-                    <Input
-                        type="file"
-                        multiple
-                        className="h-8 text-xs cursor-pointer"
-                        onChange={handleFilesChange}
-                    />
-
-                    {attachments.length > 0 && (
-                        <div className="space-y-2">
-                            {attachments.map((a, idx) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-[10px] text-muted-foreground truncate mb-0.5">
-                                            {a.file.name}
-                                        </div>
-                                        <Input
-                                            value={a.description}
-                                            onChange={(e) => updateDescription(idx, e.target.value)}
-                                            placeholder="Description (optional)"
-                                            className="h-7 text-[10px]"
-                                        />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 px-2 text-[10px] text-destructive hover:text-destructive"
-                                        onClick={() => removeAttachment(idx)}
-                                    >
-                                        ✕
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <Button onClick={handleSubmit} className="h-8 text-xs w-full">
-                    Save Note
-                </Button>
-            </DialogContent>
-        </Dialog>
-    )
+      <DialogFooter className="shrink-0 items-center border-t px-5 py-3">
+        <span className="mr-auto hidden text-[11px] text-muted-foreground sm:inline">
+          <Kbd>Ctrl</Kbd> <Kbd>Enter</Kbd> to post
+        </span>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Posting…" : "Post note"}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
 }

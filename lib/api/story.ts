@@ -15,14 +15,6 @@ export const getBacklogStories = async (projectId: number, offset = 0, limit = 1
     }
 }
 
-export const getBugStories = async (projectId: number, offset = 0, limit = 15) => {
-    const res = await api.get(`/stories?project_id=${projectId}&no_version=true&status_filter=open&tracker_id_filter=15&offset=${offset}&limit=${limit}`)
-    return {
-        issues: res?.data?.issues ?? [],
-        total_count: res?.data?.total_count ?? 0,
-    }
-}
-
 export const createStory = async (issue: any) => {
     try {
         await api.post(`/issue`, {

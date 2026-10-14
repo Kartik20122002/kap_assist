@@ -18,7 +18,14 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify(body),
         })
 
-        return new Response(null, { status: res.status })
+        if (res.ok) return new Response(null, { status: res.status })
+
+        // Forward Redmine's error body ({ errors: [...] }) so the UI can show the real reason
+        const text = await res.text()
+        return new Response(text || null, {
+            status: res.status,
+            headers: { "Content-Type": res.headers.get("content-type") ?? "application/json" },
+        })
 
     } catch (err) {
         console.log(err)

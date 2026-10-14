@@ -1,162 +1,113 @@
 "use client"
 
 import * as React from "react"
-
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { IconTarget, IconStack2, IconLayoutList, IconSearch } from "@tabler/icons-react"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { Kbd } from "@/components/ui/kbd"
+import { ProjectSwitcher } from "@/components/project-switcher"
+import { NavUser } from "@/components/nav-user"
+import { TodayWidget } from "@/components/today-widget"
+import { useProjects, useSprints } from "@/hooks/use-kap"
+import { pickCurrentSprint } from "@/lib/session"
+import { useProjectStore } from "@/store/projectStore"
+import { useUiStore } from "@/store/uiStore"
 
-import {
-  IconLayoutRows,
-  IconWaveSine,
-  IconCommand,
-  IconFrame,
-  IconTarget,
-} from "@tabler/icons-react"
-
-import { getCurrentUser } from "@/lib/api/user"
-import { getProjects } from "@/lib/api/project"
-import { getSprints } from "@/lib/api/sprint"
-import useSWR from "swr"
-import { getTimeEntries } from "@/lib/api/time"
-import { ApiConfig } from "@/lib/utils"
-import { useRouter, usePathname } from "next/navigation"
-import { SprintList } from "@/components/sprint-list"
-import { useEffect } from "react"
-import { toast } from "sonner"
-
-
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-
-  const { data: user } = useSWR(
-    ["user"],
-    getCurrentUser, ApiConfig
-  )
-
-  const router = useRouter()
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const { projectId, hydrated, hydrate, setProjectId } = useProjectStore()
+  const setPaletteOpen = useUiStore((s) => s.setPaletteOpen)
+  const { data: projects } = useProjects()
+  const { data: sprints } = useSprints(projectId)
 
-  const userData = user
-    ? {
-      name: `${user.firstname} ${user.lastname}`,
-      email: user.login,
-      id: user?.id,
-      memberships: user?.memberships ?? [],
-      avatar: "",
-    }
-    : undefined
+  React.useEffect(() => {
+    if (!hydrated) hydrate()
+  }, [hydrated, hydrate])
 
-  const { data: projects } = useSWR(
-    ["projects"],
-    getProjects, ApiConfig
-  )
+  // Default to the first project when nothing (or something stale) is stored
+  React.useEffect(() => {
+    if (!hydrated || !projects?.length) return
+    if (!projects.some((p: any) => p.id === projectId)) setProjectId(projects[0].id)
+  }, [hydrated, projects, projectId, setProjectId])
 
+  const current = pickCurrentSprint(sprints?.versions)
+  const sprintHref = current ? `/app/sprints/${current.id}` : "/app"
 
-  const data = {
-    teams: projects?.map((p: any) => {
-      return ({
-        name: p.name,
-        logo: <IconLayoutRows />,
-        id: p.id
-      })
-    })
-  }
-
-  const [selectedProject, setSelectedProject] = React.useState({ id: 0 });
-
-  const restoreProject = (v: any) => {
-    localStorage.setItem("selectedProject", v.id)
-    setSelectedProject(v)
-  }
-
-  const setProject = (v: any) => {
-    localStorage.setItem("selectedProject", v.id)
-    setSelectedProject(v)
-    router.push("/app")
-  }
-
-  const { data: sprints } = useSWR(selectedProject?.id ? ["sprints", selectedProject?.id] : null, () =>
-    getSprints(selectedProject?.id), ApiConfig
-  )
-
-  // Transform sprints data to match Sprint interface
-  const sprintList = sprints?.versions?.map((s: any) => {
-    return {
-      id: s.id,
-      name: s.name,
-      status: s.status,
-      due_date: s.due_date,
-      created_on: s.created_on,
-      icon: <IconTarget className="size-4" />,
-      projectId: selectedProject?.id
-    }
-  }).sort((a: any, b: any) => a.name.localeCompare(b.name))
-    ?? []
-
-
-  useEffect(() => {
-    if (!sprintList || sprintList.length === 0) return
-    if (pathname !== "/app") return
-    const firstOpen = sprintList.find((s: any) => s.status === "open")
-    if (firstOpen) {
-      router.push(`/app/sprints/${firstOpen.id}`)
-    }
-  }, [sprintList, pathname])
-
-  const { data: time_entries } = useSWR(
-    (selectedProject?.id && user?.id) ? ["time_entries", selectedProject.id, user?.id] : null,
-    () => getTimeEntries(selectedProject?.id, user?.id),
-    ApiConfig
-  )
-
-  // A9 — Today's timelog is under 9 hours (warn at end of day ≥ 17:00)
-  useEffect(() => {
-    if (!time_entries || !user) return
-    const currentHour = new Date().getHours()
-    if (currentHour < 17) return  // only warn after 5pm
-
-    const today = new Date().toISOString().split("T")[0]
-    const todayHours = time_entries
-      .filter((t: any) => t.spent_on === today)
-      .reduce((sum: number, t: any) => sum + t.hours, 0)
-
-    if (todayHours < 9) {
-      toast.warning(`You've only logged ${todayHours}h today`, {
-        id: "timelog-today",
-        description: "Don't forget to fill your timesheet before you wrap up!",
-        duration: 8000,
-      })
-    }
-  }, [time_entries])
-
-  // Calculate if user is admin for the selected project
-  const isAdmin = React.useMemo(() => {
-    if (!user?.memberships || selectedProject?.id === 0) return false
-    const projectMembership = user.memberships.find((m: any) => m.project?.id === selectedProject?.id)
-    return projectMembership?.roles?.some((role: any) => role.id === 6) ?? false
-  }, [user?.memberships, selectedProject?.id])
+  const nav = [
+    {
+      title: "Sprint",
+      href: sprintHref,
+      icon: IconTarget,
+      active: pathname === "/app" || pathname.startsWith("/app/sprints"),
+      badge: current?.name?.split("_").pop(),
+    },
+    { title: "Backlog", href: "/app/backlog", icon: IconStack2, active: pathname.startsWith("/app/backlog") },
+    { title: "Features", href: "/app/features", icon: IconLayoutList, active: pathname.startsWith("/app/features") },
+  ]
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" variant="inset" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data?.teams} setActiveProject={setProject} restoreActiveProject={restoreProject} activeProject={selectedProject} />
+        <ProjectSwitcher />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Search (Ctrl K)"
+              onClick={() => setPaletteOpen(true)}
+              className="border bg-background text-muted-foreground shadow-xs hover:text-foreground"
+            >
+              <IconSearch />
+              <span>Search or jump…</span>
+            </SidebarMenuButton>
+            <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
+              <Kbd>Ctrl K</Kbd>
+            </SidebarMenuBadge>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
-        <SprintList sprints={sprintList} icon={<IconTarget className="size-4" />} projectId={selectedProject?.id} isAdmin={isAdmin} />
-        <NavMain time_entries={time_entries} />
+        <SidebarGroup>
+          <SidebarGroupLabel>Work</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {nav.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton isActive={item.active} tooltip={item.title} render={<Link href={item.href} />}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                  {item.badge && <SidebarMenuBadge className="text-muted-foreground">{item.badge}</SidebarMenuBadge>}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-auto group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel>Today</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <TodayWidget />
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
-        {userData && <NavUser user={userData} projectId={selectedProject?.id} />}
+        <NavUser />
       </SidebarFooter>
 
       <SidebarRail />

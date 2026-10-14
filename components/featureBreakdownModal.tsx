@@ -57,9 +57,9 @@ export default function FeatureBreakdownModal({ projectId, stories }: FeatureBre
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
-                    <Button size="sm" variant="secondary" className="h-7 px-3 text-xs gap-1">
-                        <IconLayoutGrid className="size-3" />
-                        Feature Breakdown
+                    <Button variant="outline">
+                        <IconLayoutGrid />
+                        <span className="hidden sm:inline">Features</span>
                     </Button>
                 }
             />

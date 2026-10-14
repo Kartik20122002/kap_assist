@@ -5,6 +5,18 @@ export const getTimeEntries = async (projectId: number, user_id: any = "me" ) =>
     return res?.data?.time_entries ?? []
 }
 
+// My entries across all projects between two local dates (inclusive)
+export const getMyTimeEntriesBetween = async (from: string, to: string) => {
+    const res = await api.get(`/time_entries?user_id=me&from=${from}&to=${to}&limit=100`)
+    return res?.data?.time_entries ?? []
+}
+
+// Everyone's entries on one issue (task history)
+export const getIssueTimeEntries = async (issueId: number) => {
+    const res = await api.get(`/time_entries?user_id=all&issue_id=${issueId}&limit=100`)
+    return res?.data?.time_entries ?? []
+}
+
 // date type = 2020-12-24
 export const createTimeEntry = async (taskid: any, date: any, spent_hours: any, comments: any, category: any, type: any) => {
     const res = await api.post(`/time_entries`, {

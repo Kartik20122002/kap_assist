@@ -1,214 +1,194 @@
 "use client"
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { createTimeEntry } from "@/lib/api/time"
-import { mutate } from "swr"
+import { useMemo, useState } from "react"
+import useSWR from "swr"
 import { toast } from "sonner"
 import { IconClock } from "@tabler/icons-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FormField } from "@/components/forms/form-field"
+import { createTimeEntry, getIssueTimeEntries } from "@/lib/api/time"
+import { extractError } from "@/lib/workflow"
+import { refreshTimeData } from "@/lib/refresh"
+import { formatShortDate, todayLocal, weekdayShort } from "@/lib/date"
+import { CATEGORIES, CATEGORY_TYPE, HOUR_PRESETS, taskCategory } from "@/lib/time"
 
-const categoryMap: any = {
-  CODING: "WORK",
-  PLANNING: "WORK",
-  "UNIT TESTING": "WORK",
-  "TEAM MEETING": "NA",
-  MISCELLANEOUS: "NA",
-  TRAINING: "NA",
+type Props = {
+  taskId: number
+  task?: any
+  taskHistory?: any[]
+  projectId?: number
+  iconOnly?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
 }
 
-export default function TimeLogDialog({ taskId, projectId, taskHistory = [], iconOnly = false }: any) {
-  const [open, setOpen] = useState(false)
-  const [date, setDate] = useState(
-    new Date().toISOString().split("T")[0]
-  )
-  const [hours, setHours] = useState("")
-  const [comments, setComments] = useState("")
-  const [category, setCategory] = useState("CODING")
-
-  const handleSubmit = async () => {
-    if (!hours || Number(hours) <= 0) {
-      toast.error("Enter valid hours (must be > 0)")
-      return
-    }
-
-    const type = categoryMap[category]
-
-    toast.promise(
-      createTimeEntry(taskId, date, Number(hours), comments, category, type),
-      {
-        loading: "Logging time…",
-        success: () => {
-          mutate(key => Array.isArray(key) && key[0] === "time_entries")
-          setOpen(false)
-          setHours("")
-          setComments("")
-          return `${hours}h logged (${category})`
-        },
-        error: (err) => err?.message ?? "Failed to log time",
-      }
-    )
-  }
-
-  const handleReset = async () => {
-    setDate(new Date().toISOString().split("T")[0])
-    setHours("");
-    setComments("");
-    setCategory("CODING")
-  }
+// Log time on a task and see its full history (everyone's entries), grouped by day.
+export default function TimeLogDialog({ taskId, task, taskHistory, iconOnly = false, open: openProp, onOpenChange, hideTrigger = false }: Props) {
+  const [innerOpen, setInnerOpen] = useState(false)
+  const open = openProp ?? innerOpen
+  const setOpen = onOpenChange ?? setInnerOpen
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          iconOnly ? (
-            <Button size="icon" variant="ghost" className="size-9 text-muted-foreground hover:text-foreground">
-              <IconClock className="size-4.5" />
-            </Button>
-          ) : (
-            <Button size="sm" variant="secondary" className="h-6 px-4 text-[10px]">
-              Time Log
-            </Button>
-          )
-        }
-      />
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            iconOnly ? (
+              <Button size="icon-sm" variant="ghost" className="text-muted-foreground hover:text-foreground" aria-label="Time log" />
+            ) : (
+              <Button size="sm" variant="outline" />
+            )
+          }
+        >
+          <IconClock />
+          {!iconOnly && "Time log"}
+        </DialogTrigger>
+      )}
+      <DialogContent className="flex max-h-[92vh] w-[min(52rem,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+        {open && <TimeLogBody taskId={taskId} task={task} taskHistory={taskHistory} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-      <DialogContent className="p-4 space-y-3 w-[95vw] sm:min-w-11/12 max-w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="space-y-3 grow">
-            <DialogHeader>
-              <DialogTitle className="text-sm">Log Time</DialogTitle>
-            </DialogHeader>
+function TimeLogBody({ taskId, task, taskHistory }: { taskId: number; task?: any; taskHistory?: any[] }) {
+  const defaultCategory = task ? taskCategory(task) : "CODING"
+  const [hours, setHours] = useState("1")
+  const [date, setDate] = useState(todayLocal())
+  const [category, setCategory] = useState(defaultCategory)
+  const [comment, setComment] = useState("")
+  const [saving, setSaving] = useState(false)
 
-            {/* Date */}
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-12 text-sm"
-            />
+  const { data: fetched } = useSWR(!taskHistory ? ["time_entries", "issue", taskId] : null, () => getIssueTimeEntries(taskId))
+  const history: any[] = useMemo(() => taskHistory ?? fetched ?? [], [taskHistory, fetched])
 
-            {/* Hours */}
-            <Input
-              type="number"
-              placeholder="Hours"
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              className="h-12 text-sm"
-            />
+  const days = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (const e of [...history].sort((a, b) => String(b.spent_on).localeCompare(String(a.spent_on)))) {
+      map.set(e.spent_on, [...(map.get(e.spent_on) ?? []), e])
+    }
+    return [...map.entries()]
+  }, [history])
+  const total = history.reduce((s, e) => s + Number(e.hours ?? 0), 0)
 
-            {/* Category */}
-            
-            <Select value={category} onValueChange={(v) => v != null && setCategory(v)}>
-              <SelectTrigger className="min-h-10 text-sm w-1/2 min-w-20">
+  const submit = async () => {
+    const h = Number(hours)
+    if (!h || h <= 0) {
+      toast.error("Enter hours greater than 0")
+      return
+    }
+    setSaving(true)
+    try {
+      await createTimeEntry(taskId, date, h, comment, category, CATEGORY_TYPE[category])
+      toast.success(`${h}h logged on #${taskId}`)
+      setComment("")
+      await refreshTimeData()
+    } catch (err) {
+      toast.error("Couldn't log time", { description: extractError(err) })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <DialogHeader className="shrink-0 border-b px-5 py-3.5">
+        <DialogTitle className="text-sm">Time log · #{taskId}</DialogTitle>
+        {task?.subject && <DialogDescription className="truncate">{task.subject}</DialogDescription>}
+      </DialogHeader>
+
+      <div className="grid min-h-0 flex-1 overflow-y-auto md:grid-cols-[18rem_minmax(0,1fr)] md:overflow-hidden">
+        {/* Log form */}
+        <form
+          className="flex flex-col gap-3.5 border-b p-5 md:border-r md:border-b-0"
+          onSubmit={(e) => {
+            e.preventDefault()
+            submit()
+          }}
+        >
+          <FormField label="Hours" required>
+            <ToggleGroup
+              value={HOUR_PRESETS.includes(hours) ? [hours] : []}
+              onValueChange={(v: string[]) => v[0] && setHours(v[0])}
+              variant="outline"
+              size="sm"
+              spacing={0}
+              className="w-full"
+            >
+              {HOUR_PRESETS.map((p) => (
+                <ToggleGroupItem key={p} value={p} className="flex-1 px-0 tabular-nums">
+                  {p}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Input type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} className="h-8 text-xs" />
+          </FormField>
+          <FormField label="Date" required>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 text-xs" />
+          </FormField>
+          <FormField label="Category" hint={`Type: ${CATEGORY_TYPE[category]}`}>
+            <Select value={category} onValueChange={(v) => v && setCategory(String(v))}>
+              <SelectTrigger className="h-8 w-full text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(categoryMap).map((c) => (
+                {CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </FormField>
+          <FormField label="Comment">
+            <Input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Optional" className="h-8 text-xs" />
+          </FormField>
+          <Button type="submit" disabled={saving} className="mt-1">
+            {saving ? "Logging…" : `Log ${hours || 0}h`}
+          </Button>
+        </form>
 
-
-            {/* Comments */}
-            <Input
-              placeholder="Comments"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              className="h-12 text-xs"
-            />
-
-            <Button onClick={handleSubmit} variant={"default"} className="h-8 text-sm px-12">
-              Save
-            </Button>
-
-            <Button onClick={handleReset} variant="destructive" className="h-8 text-sm px-12 ml-6">
-              Reset
-            </Button>
-
+        {/* History */}
+        <div className="flex min-h-0 flex-col md:overflow-hidden">
+          <div className="flex items-center justify-between px-5 pt-4 pb-2">
+            <span className="text-[11px] font-medium text-muted-foreground">History</span>
+            <span className="text-xs tabular-nums">
+              Total <span className="font-semibold">{total}h</span>
+            </span>
           </div>
-
-          <div className="grow space-y-2">
-
-            <div className="text-xs font-medium opacity-70">
-              Time Logs
-            </div>
-
-            <div className="max-h-100 overflow-y-auto space-y-2 pr-1">
-
-              {taskHistory?.map((t: any) => {
-                const category = t.custom_fields?.find((f: any) => f.id === 46)?.value
-                const type = t.custom_fields?.find((f: any) => f.id === 47)?.value
-
-                return (
-                  <div
-                    key={t.id}
-                    className="py-2 px-6 rounded-md bg-muted/60 text-xs space-y-1"
-                  >
-
-                    {/* top row */}
-                    <div className="flex justify-between">
-
-                      <div className="font-medium">
-                        {t.spent_on}
-                      </div>
-
-                      <div className="font-semibold text-lg text-foreground">
-                        {t.hours}h
-                      </div>
-
-                    </div>
-
-                    {/* meta */}
-                    <div className="flex gap-3 opacity-70">
-
-                      <span>
-                        {category}
-                      </span>
-
-                      <span>
-                        {type}
-                      </span>
-
-                      <span>
-                        {t.user?.name}
-                      </span>
-
-                    </div>
-
-                    {/* comments */}
-                    {t.comments && (
-                      <div className="opacity-80 line-clamp-2">
-                        {t.comments}
-                      </div>
-                    )}
-
-                  </div>
-                )
-              })}
-
-              {taskHistory.length === 0 && (
-                <div className="text-[10px] opacity-60">
-                  No logs
+          <div className="flex-1 overflow-y-auto px-5 pb-5">
+            {days.length === 0 && <div className="py-8 text-center text-xs text-muted-foreground">No time logged yet</div>}
+            {days.map(([day, entries]) => (
+              <div key={day} className="border-b py-2.5 last:border-b-0">
+                <div className="mb-1.5 flex items-baseline justify-between text-xs">
+                  <span className="font-medium">
+                    {weekdayShort(day)} {formatShortDate(day)}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {entries.reduce((s, e) => s + Number(e.hours ?? 0), 0)}h
+                  </span>
                 </div>
-              )}
-
-            </div>
-
+                {entries.map((e) => (
+                  <div key={e.id} className="flex items-start gap-3 py-1 text-xs">
+                    <span className="w-10 shrink-0 font-semibold tabular-nums">{e.hours}h</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="text-muted-foreground">
+                        {e.user?.name} · {e.custom_fields?.find((f: any) => f.id === 46)?.value}
+                      </span>
+                      {e.comments && <span className="block line-clamp-2">{e.comments}</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
   )
 }

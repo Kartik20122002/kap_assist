@@ -29,6 +29,11 @@ interface VersionSprintModalProps {
         due_date?: string
     }
     onSuccess?: () => void
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    hideTrigger?: boolean
+    // create mode: prefilled name/due date for the next two-week sprint
+    suggestion?: { name: string; due_date: string } | null
 }
 
 /**
@@ -58,8 +63,14 @@ export default function VersionSprintModal({
     mode,
     version,
     onSuccess,
+    open: openProp,
+    onOpenChange,
+    hideTrigger = false,
+    suggestion,
 }: VersionSprintModalProps) {
-    const [open, setOpen] = useState(false)
+    const [innerOpen, setInnerOpen] = useState(false)
+    const open = openProp ?? innerOpen
+    const setOpen = onOpenChange ?? setInnerOpen
     const [name, setName] = useState(version?.name || "")
     const [description, setDescription] = useState(version?.description || "")
     const [status, setStatus] = useState(version?.status || "open")
@@ -68,13 +79,16 @@ export default function VersionSprintModal({
     // Reset form when modal opens/closes
     useEffect(() => {
         if (!open) {
+        } else if (mode === "create" && suggestion && !name) {
+            setName(suggestion.name)
+            setDueDate(suggestion.due_date)
         } else if (mode === "update" && version) {
             setName(version.name)
             setDescription(version.description || "")
             setStatus(version.status)
             setDueDate(version.due_date || "")
         }
-    }, [open, mode, version])
+    }, [open, mode, version]) // eslint-disable-line react-hooks/exhaustive-deps
 
     /**
      * Validates form inputs
@@ -147,7 +161,7 @@ export default function VersionSprintModal({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger
+            {!hideTrigger && <DialogTrigger
                 render={
                     mode === "create" ? (
                         <Button size="sm" variant="secondary" className="h-7 px-3 text-xs gap-1">
@@ -161,7 +175,7 @@ export default function VersionSprintModal({
                         </Button>
                     )
                 }
-            />
+            />}
 
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-6">
                 <DialogHeader>

@@ -53,7 +53,12 @@ export async function PUT(req: NextRequest, { params }: { params: any }) {
             return new Response(null, { status: 204 })
         }
 
-        return new Response(null, { status: res.status })
+        // Forward Redmine's error body ({ errors: [...] }) so the UI can show the real reason
+        const text = await res.text()
+        return new Response(text || null, {
+            status: res.status,
+            headers: { "Content-Type": res.headers.get("content-type") ?? "application/json" },
+        })
 
     } catch (err) {
         return Response.json({ error: "Failed to parse body or fetch data" }, { status: 400 })

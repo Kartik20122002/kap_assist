@@ -1,274 +1,463 @@
 "use client"
 
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import useSWR from "swr"
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import StoryCard from "@/components/story-card"
-import { getCurrentUser } from "@/lib/api/user"
-import { useMemo, useState, useEffect } from "react"
-import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
-import { getSprintById } from "@/lib/api/sprint"
+import {
+  IconRefresh,
+  IconDots,
+  IconEdit,
+  IconChecks,
+  IconSearch,
+  IconLayoutNavbarCollapse,
+  IconLayoutNavbarExpand,
+  IconCalendarEvent,
+} from "@tabler/icons-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Kbd } from "@/components/ui/kbd"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import CreateStoryDialog from "@/components/addStoryModal"
-import { getStoriesBySprint, updateStory } from "@/lib/api/story"
-import { US_FLOW } from "@/lib/utils"
 import VersionSprintModal from "@/components/versionSprintModal"
 import FeatureBreakdownModal from "@/components/featureBreakdownModal"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { mutate } from "swr"
-import { IconChevronDown, IconRefresh } from "@tabler/icons-react"
+import { SprintSwitcher } from "@/components/sprint/sprint-switcher"
+import { SprintStats } from "@/components/sprint/sprint-stats"
+import { StoryRow } from "@/components/sprint/story-row"
+import { getSprintById } from "@/lib/api/sprint"
+import { getStoriesBySprint } from "@/lib/api/story"
+import { getTasks } from "@/lib/api/task"
+import { ApiConfig } from "@/lib/utils"
+import { useSprints, useUser } from "@/hooks/use-kap"
+import { isProjectAdmin, userDisplayName, initials } from "@/lib/session"
+import { ACTIVE_STATUSES, DONE_STATUSES, STATUS, runStatusJump } from "@/lib/workflow"
+import { healthForStory, storyEstimate, storyPoints, storySpent } from "@/lib/health"
+import { refreshSprintData } from "@/lib/refresh"
+import { daysBetween, formatShortDate, todayLocal } from "@/lib/date"
+import { sprintDayProgress } from "@/lib/sprint"
+import { useProjectStore } from "@/store/projectStore"
+import { useUiStore } from "@/store/uiStore"
+
+type StatusFilter = "all" | "todo" | "active" | "done"
+
+const statusBucket = (id?: number): Exclude<StatusFilter, "all"> =>
+  id !== undefined && DONE_STATUSES.has(id) ? "done" : id !== undefined && ACTIVE_STATUSES.has(id) ? "active" : "todo"
+
+const isTyping = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))
 
 export default function SprintPage() {
-
-  const { data: user } = useSWR(["user"], getCurrentUser, ApiConfig)
   const { id } = useParams()
-  const { data } = useSWR(["sprint", id], () => getSprintById(id as string), ApiConfig)
-  const version = useMemo(() => data?.version, [data])
-  const projectId = useMemo(() => version?.project?.id ?? 0, [version])
+  const sprintId = String(id)
 
-  const roles = user?.memberships?.map((mm: { project: { id: number }, roles: any[] }) =>
-    mm.project?.id === projectId ? mm?.roles ?? [] : []
-  ).flat()?.sort((a: any, b: any) => a.id - b.id)
+  const { data: user } = useUser()
+  const { data: sprintData } = useSWR(["sprint", sprintId], () => getSprintById(sprintId), ApiConfig)
+  const version = sprintData?.version
+  const projectId: number = version?.project?.id ?? 0
+  const { data: sprintsData } = useSprints(projectId)
 
-  const isAdmin = roles?.some((role: { id: number }) => role.id == 6)
+  const isAdmin = isProjectAdmin(user, projectId)
+  const me = userDisplayName(user)
 
-  const { data: userStories } = useSWR(
-    id ? ["sprintStories", id, isAdmin] : null,
-    () => getStoriesBySprint(Number(id), projectId, isAdmin),
+  // Keep the sidebar's project in sync when a sprint link from another project is opened
+  const { projectId: storedProjectId, setProjectId } = useProjectStore()
+  useEffect(() => {
+    if (projectId && storedProjectId !== projectId) setProjectId(projectId)
+  }, [projectId, storedProjectId, setProjectId])
+
+  const { data: stories } = useSWR(
+    version ? ["sprintStories", sprintId, isAdmin] : null,
+    () => getStoriesBySprint(Number(sprintId), projectId as any, isAdmin),
     ApiConfig
   )
 
-  const today = new Date().toISOString().split("T")[0]
+  const storyIdsKey = useMemo(() => (stories ?? []).map((s: any) => s.id).join(","), [stories])
+  const { data: tasksByStory } = useSWR(
+    stories ? ["sprintTasks", sprintId, storyIdsKey] : null,
+    async () => {
+      const entries = await Promise.all((stories ?? []).map(async (s: any) => [s.id, await getTasks(s.id)] as const))
+      return Object.fromEntries(entries) as Record<number, any[]>
+    },
+    ApiConfig
+  )
+
+  // ── Filters ────────────────────────────────────────────────────────────────
+  const people = useMemo(
+    () => [...new Set<string>((stories ?? []).map((s: any) => s.assigned_to?.name).filter(Boolean))].sort(),
+    [stories]
+  )
+  const [personOverride, setPersonOverride] = useState<string | null>(null)
+  const person = personOverride ?? (people.includes(me) ? me : "all")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [query, setQuery] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  const byPerson = useMemo(
+    () => (stories ?? []).filter((s: any) => person === "all" || s.assigned_to?.name === person),
+    [stories, person]
+  )
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return byPerson
+      .filter((s: any) => statusFilter === "all" || statusBucket(s.status?.id) === statusFilter)
+      .filter((s: any) => {
+        if (!q) return true
+        const hay = [`#${s.id}`, s.subject, ...(tasksByStory?.[s.id] ?? []).flatMap((t: any) => [`#${t.id}`, t.subject])]
+        return hay.some((h) => String(h).toLowerCase().includes(q))
+      })
+      .sort((a: any, b: any) => Number(a.status?.id === STATUS.CLOSED) - Number(b.status?.id === STATUS.CLOSED))
+  }, [byPerson, statusFilter, query, tasksByStory])
+
+  const counts = useMemo(() => {
+    const c = { all: byPerson.length, todo: 0, active: 0, done: 0 }
+    for (const s of byPerson) c[statusBucket(s.status?.id)]++
+    return c
+  }, [byPerson])
+
+  // ── Stats + health (for the selected person) ───────────────────────────────
+  const stats = useMemo(() => {
+    let pointsDone = 0, pointsTotal = 0, hoursSpent = 0, hoursEstimated = 0, storiesDone = 0
+    for (const s of byPerson) {
+      const pts = storyPoints(s) ?? 0
+      const done = DONE_STATUSES.has(s.status?.id)
+      pointsTotal += pts
+      if (done) { pointsDone += pts; storiesDone++ }
+      hoursSpent += storySpent(s, tasksByStory?.[s.id])
+      hoursEstimated += storyEstimate(s)
+    }
+    return { pointsDone, pointsTotal, hoursSpent, hoursEstimated, storiesDone, storiesTotal: byPerson.length }
+  }, [byPerson, tasksByStory])
+
+  const healthByStory = useMemo(() => {
+    const map: Record<number, ReturnType<typeof healthForStory>> = {}
+    for (const s of byPerson) map[s.id] = healthForStory(s, tasksByStory?.[s.id])
+    return map
+  }, [byPerson, tasksByStory])
+  const allHealth = useMemo(() => Object.values(healthByStory).flat(), [healthByStory])
+
+  const subjects = useMemo(() => {
+    const map: Record<number, string> = {}
+    for (const s of stories ?? []) {
+      map[s.id] = s.subject
+      for (const t of tasksByStory?.[s.id] ?? []) map[t.id] = t.subject
+    }
+    return map
+  }, [stories, tasksByStory])
+
+  // ── Expand / collapse (open work expanded by default) ──────────────────────
+  const [expandedOverride, setExpandedOverride] = useState<Record<number, boolean>>({})
+  const isExpanded = (s: any) => expandedOverride[s.id] ?? !DONE_STATUSES.has(s.status?.id)
+  const setAllExpanded = (value: boolean) =>
+    setExpandedOverride(Object.fromEntries(visible.map((s: any) => [s.id, value])))
+  const allExpanded = visible.length > 0 && visible.every(isExpanded)
+
+  // ── Focus a story (from the palette or the health list) ───────────────────
+  const [highlightId, setHighlightId] = useState<number | null>(null)
+  const focusIssue = useUiStore((s) => s.focusIssue)
+  const setSprintStories = useUiStore((s) => s.setSprintStories)
+
+  const focusStory = (storyId: number) => {
+    const story = (stories ?? []).find((s: any) => s.id === storyId)
+    if (!story) return
+    if (!visible.some((s: any) => s.id === storyId)) {
+      setPersonOverride("all")
+      setStatusFilter("all")
+      setQuery("")
+    }
+    setExpandedOverride((prev) => ({ ...prev, [storyId]: true }))
+    setHighlightId(storyId)
+    requestAnimationFrame(() =>
+      setTimeout(() => document.getElementById(`story-${storyId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50)
+    )
+    setTimeout(() => setHighlightId((h) => (h === storyId ? null : h)), 1800)
+  }
+
+  // The palette asks to focus a story through the store
+  useEffect(
+    () =>
+      useUiStore.subscribe((state) => {
+        if (state.focusIssueId == null) return
+        const target = state.focusIssueId
+        focusIssue(null)
+        focusStory(target)
+      }),
+    [focusStory, focusIssue]
+  )
 
   useEffect(() => {
-    if (version?.due_date && version.due_date < today && version.status === "open") {
-      toast.error(`Sprint "${version.name}" is past its due date (${version.due_date})`, {
-        id: `sprint-${version.id}-overdue`,
-        description: isAdmin ? "Consider closing or extending this sprint." : "Contact your admin to close or extend this sprint.",
-      })
-    }
-  }, [version?.due_date, version?.status, version?.id, version?.name, today, isAdmin])
+    setSprintStories(
+      (stories ?? []).map((s: any) => ({ id: s.id, subject: s.subject, status: s.status?.name, assignee: s.assigned_to?.name }))
+    )
+    return () => setSprintStories([])
+  }, [stories, setSprintStories])
 
+  // "/" focuses search
   useEffect(() => {
-    if (userStories !== undefined && userStories.length === 0) {
-      toast.warning(`No stories assigned to sprint "${version?.name}"`, {
-        id: `sprint-${version?.id}-no-stories`,
-        description: "Add user stories to start planning work for this sprint.",
-      })
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && !isTyping(e.target) && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
     }
-  }, [userStories, version?.id, version?.name])
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
-  const users = [...new Set(userStories?.map((us: any) => us?.assigned_to?.name))]
-  const [selectedUserOverride, setSelectedUserOverride] = useState<string | null>(null)
-  const [closeStoriesOpen, setCloseStoriesOpen] = useState(false)
-  const [closingStories, setClosingStories] = useState(false)
-  const [headerExpanded, setHeaderExpanded] = useState(false)
-
-  const defaultUser = user ? `${user.firstname} ${user.lastname}` : null
-  const selectedUser = selectedUserOverride ?? defaultUser
-  const setSelectedUser = setSelectedUserOverride
-
-  const visibleStories = userStories?.filter((story: any) =>
-    selectedUser ? story?.assigned_to?.name === selectedUser : true
-  ) ?? []
-
+  // ── Actions ────────────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false)
-
-  const handleRefresh = async () => {
+  const refresh = async () => {
     setRefreshing(true)
-    await mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(id))
-    await mutate((key: any) => Array.isArray(key) && key[0] === "tasks")
+    await refreshSprintData()
     setRefreshing(false)
   }
 
+  const [editSprintOpen, setEditSprintOpen] = useState(false)
+  const [closeStoriesOpen, setCloseStoriesOpen] = useState(false)
+  const closableStories = visible.filter((s: any) => s.status?.id !== STATUS.CLOSED)
+
+  // Honest bulk close: stories with open tasks are skipped and reported, never counted as closed.
   const closeAllStories = async () => {
-    const openStories = visibleStories.filter((s: any) => s.status?.name !== "Closed")
-    if (openStories.length === 0) {
-      toast.info("No open stories to close")
-      setCloseStoriesOpen(false)
-      return
-    }
-
-    setClosingStories(true)
     setCloseStoriesOpen(false)
-
-    const closedIdx = US_FLOW.findIndex((s) => s.name === "Closed")
-    let closedCount = 0
-
-    for (const story of openStories) {
-      const currentIdx = US_FLOW.findIndex((s) => s.id === story.status?.id)
-      if (currentIdx === -1 || currentIdx >= closedIdx) continue
-
-      const steps = US_FLOW.slice(currentIdx + 1, closedIdx + 1)
-      const toastId = `transition-${story.id}`
-      toast.loading(`Transitioning "${story.subject}"…`, { id: toastId })
-
-      let failed = false
-      for (const step of steps) {
-        try {
-          await updateStory(story.id, { status_id: step.id })
-          toast.loading(`"${story.subject}" → ${step.name}`, { id: toastId })
-        } catch {
-          toast.error(`Failed at "${step.name}" for "${story.subject}"`, { id: toastId })
-          failed = true
-          break
-        }
-      }
-
-      if (!failed) {
-        closedCount++
-        toast.success(`"${story.subject}" closed`, { id: toastId })
+    const toastId = toast.loading(`Closing ${closableStories.length} stories…`)
+    const failed: string[] = []
+    for (const story of closableStories) {
+      const tasks = tasksByStory?.[story.id] ?? []
+      try {
+        await runStatusJump(story, STATUS.CLOSED, {
+          storyPoints: storyPoints(story),
+          openChildTasks: tasks.filter((t: any) => t.status?.id !== STATUS.CLOSED).length,
+        })
+      } catch (err: any) {
+        failed.push(`#${story.id}: ${err?.message}`)
       }
     }
-
-    mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(id))
-    setClosingStories(false)
-    toast.success(`Transitioned ${closedCount} of ${openStories.length} stories to Closed`)
+    await refreshSprintData()
+    const ok = closableStories.length - failed.length
+    if (failed.length) toast.error(`${ok} of ${closableStories.length} stories closed`, { id: toastId, description: failed.join("\n") })
+    else toast.success(`All ${ok} stories closed`, { id: toastId })
   }
 
-  if (!data) return <div className="p-4">Loading...</div>
+  // ── Render ─────────────────────────────────────────────────────────────────
+  if (!version) {
+    return (
+      <div className="w-full space-y-3 p-3 md:p-6 lg:px-8">
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    )
+  }
+
+  const today = todayLocal()
+  const progress = sprintDayProgress(version)
+  const endDate = progress?.end ?? version.due_date
+  const daysLeft = endDate ? daysBetween(today, endDate) : null
+  const overdue = version.status === "open" && daysLeft !== null && daysLeft < 0
 
   return (
-    <div className="px-3 py-3 md:px-6 md:py-6 space-y-3 md:space-y-6">
+    <div className="w-full space-y-3 p-3 md:space-y-4 md:p-6 lg:px-8">
+      {/* Header */}
+      <header className="flex flex-wrap items-center gap-2">
+        <SprintSwitcher sprints={sprintsData?.versions ?? []} current={version} projectId={projectId} isAdmin={isAdmin} />
 
-      {/* HEADER — collapsible on mobile */}
-      <Card className="bg-muted/40 py-0 gap-0">
-        {/* Always-visible collapsed row */}
-        <div
-          className="flex items-center justify-between gap-2 px-3 py-1.5 sm:px-4 sm:py-3 cursor-pointer sm:cursor-default"
-          onClick={() => setHeaderExpanded(v => !v)}
-        >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="font-semibold text-sm sm:text-lg truncate">{version?.name}</span>
-            <Badge
-              variant={version?.status === "open" ? "default" : "secondary"}
-              className="capitalize text-xs px-2 py-0.5 shrink-0"
-            >
-              {version?.status}
-            </Badge>
-          </div>
-          <IconChevronDown
-            className={`size-4 shrink-0 text-muted-foreground transition-transform sm:hidden ${headerExpanded ? "rotate-180" : ""}`}
-          />
+        <Badge variant={version.status === "open" ? "default" : "secondary"} className="capitalize">
+          {version.status}
+        </Badge>
+
+        <span className={`flex items-center gap-1 text-xs ${overdue ? "text-destructive" : "text-muted-foreground"}`}>
+          <IconCalendarEvent className="size-3.5" />
+          {progress ? (
+            <>
+              {formatShortDate(progress.start)} – {formatShortDate(progress.end)}
+              {version.status === "open" && today >= progress.start && !overdue && (
+                <span className="font-medium text-foreground">
+                  · Day {progress.day} of {progress.total}
+                </span>
+              )}
+              {version.status === "open" && daysLeft !== null && (
+                <span className="font-medium">
+                  · {daysLeft > 0 ? `${daysLeft}d left` : daysLeft === 0 ? "ends today" : `${-daysLeft}d overdue`}
+                </span>
+              )}
+            </>
+          ) : (
+            "No dates"
+          )}
+        </span>
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger render={<Button size="icon" variant="ghost" onClick={refresh} disabled={refreshing} aria-label="Refresh" />}>
+              <IconRefresh className={refreshing ? "animate-spin" : ""} />
+            </TooltipTrigger>
+            <TooltipContent>Refresh</TooltipContent>
+          </Tooltip>
+          <FeatureBreakdownModal projectId={projectId} stories={stories ?? []} />
+          {isAdmin && <CreateStoryDialog projectId={projectId} sprintId={sprintId} assignedToId={user?.id} />}
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button size="icon" variant="ghost" aria-label="Sprint actions" />}>
+                <IconDots />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-48">
+                <DropdownMenuItem onClick={() => setEditSprintOpen(true)}>
+                  <IconEdit /> Edit sprint
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={closableStories.length === 0}
+                  onClick={() => setCloseStoriesOpen(true)}
+                >
+                  <IconChecks /> Close shown stories ({closableStories.length})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
+      </header>
 
-        {/* Expanded details — always visible on sm+, toggle on mobile */}
-        <div className={`${headerExpanded ? "block" : "hidden"} sm:block border-t border-border/30`}>
-          <CardHeader className="px-3 py-2 sm:px-4 sm:pt-3 space-y-1.5">
-            <div className="flex flex-wrap gap-2 items-center">
-              {isAdmin && <CreateStoryDialog projectId={projectId} sprintId={id} assignedToId={user?.id} />}
-              {isAdmin && <VersionSprintModal projectId={projectId} mode="update" version={version} />}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              #{version?.id} • {version?.project?.name}
-            </div>
-          </CardHeader>
+      {/* Stats + health */}
+      {stories === undefined ? (
+        <Skeleton className="h-16 w-full" />
+      ) : (
+        <SprintStats {...stats} health={allHealth} subjects={subjects} onFocus={focusStory} />
+      )}
 
-          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-              <div>
-                <div className="opacity-60">Created On</div>
-                <div className="text-sm">{version?.created_on?.split("T")[0] || "-"}</div>
-              </div>
-              <div>
-                <div className="opacity-60">Due Date</div>
-                <div className="text-sm">{version?.due_date || "-"}</div>
-              </div>
-              <div>
-                <div className="opacity-60">Description</div>
-                <div className="text-sm">{version?.description || "-"}</div>
-              </div>
-              <div>
-                <div className="opacity-60">Est. Hours</div>
-                <div className="text-sm">{version?.estimated_hours ?? 0}h</div>
-              </div>
-              <div>
-                <div className="opacity-60">Spent</div>
-                <div className="text-sm">{version?.spent_hours ?? 0}h</div>
-              </div>
-            </div>
-          </CardContent>
-        </div>
-      </Card>
-
-      {/* STORIES — flat on mobile, card on desktop */}
-      <div className="sm:rounded-lg sm:bg-muted/40 sm:border sm:border-border/50">
-
-        {/* Section header */}
-        <div className="flex items-center justify-between gap-2 py-2 sm:px-4 sm:py-3">
-          <span className="text-sm font-medium">User Stories & Tasks</span>
-          <div className="flex items-center gap-2">
-            <FeatureBreakdownModal projectId={projectId} stories={userStories ?? []} />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              <IconRefresh className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-            {isAdmin && (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-7 px-3 text-xs"
-                onClick={() => setCloseStoriesOpen(true)}
-              >
-                Close All Stories
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* User filter */}
-        {users && users?.length > 1 && (
-          <div className="flex flex-wrap gap-2 pb-2 sm:px-4">
-            {users?.map((ur: any) => (
-              <Badge
-                key={`user:${ur}`}
-                className="cursor-pointer select-none"
-                onClick={() => setSelectedUser(ur)}
-                variant={selectedUser === ur ? "default" : "outline"}
-              >
-                {ur as string}
-              </Badge>
+      {/* Toolbar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {isAdmin && people.length > 1 && (
+          <ToggleGroup
+            value={[person]}
+            onValueChange={(v: string[]) => v[0] && setPersonOverride(v[0])}
+            variant="outline"
+            size="sm"
+            spacing={0}
+            className="max-w-full overflow-x-auto"
+          >
+            <ToggleGroupItem value="all">Everyone</ToggleGroupItem>
+            {people.map((p) => (
+              <Tooltip key={p}>
+                <TooltipTrigger render={<ToggleGroupItem value={p} aria-label={p} />}>
+                  {p === me ? "Me" : initials(p)}
+                </TooltipTrigger>
+                <TooltipContent>{p}</TooltipContent>
+              </Tooltip>
             ))}
-          </div>
+          </ToggleGroup>
         )}
 
-        {/* Story list — flat items with dividers on mobile, spaced cards on desktop */}
-        <div className="sm:px-4 sm:pb-4 sm:space-y-2">
-          {visibleStories.map((story: any) => (
-            <StoryCard key={story.id} story={story} isAdmin={isAdmin} />
-          ))}
+        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <TabsList>
+            <TabsTrigger value="all">All {counts.all}</TabsTrigger>
+            <TabsTrigger value="todo">To do {counts.todo}</TabsTrigger>
+            <TabsTrigger value="active">Active {counts.active}</TabsTrigger>
+            <TabsTrigger value="done">Done {counts.done}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex flex-1 items-center gap-1.5">
+          <InputGroup className="h-8 flex-1">
+            <InputGroupAddon>
+              <IconSearch />
+            </InputGroupAddon>
+            <InputGroupInput
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && (setQuery(""), e.currentTarget.blur())}
+              placeholder="Search stories & tasks"
+            />
+            <InputGroupAddon align="inline-end">
+              <Kbd>/</Kbd>
+            </InputGroupAddon>
+          </InputGroup>
+          <Tooltip>
+            <TooltipTrigger
+              render={<Button size="icon" variant="ghost" onClick={() => setAllExpanded(!allExpanded)} aria-label="Expand or collapse all" />}
+            >
+              {allExpanded ? <IconLayoutNavbarCollapse /> : <IconLayoutNavbarExpand />}
+            </TooltipTrigger>
+            <TooltipContent>{allExpanded ? "Collapse all" : "Expand all"}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
-      {/* Close All Stories confirmation */}
-      <Dialog open={closeStoriesOpen} onOpenChange={setCloseStoriesOpen}>
-        <DialogContent className="max-w-sm p-6">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Close All Stories?</DialogTitle>
-          </DialogHeader>
-          <p className="text-xs text-muted-foreground">
-            This will sequentially transition <span className="font-semibold text-foreground">
-              {visibleStories.filter((s: any) => s.status?.name !== "Closed").length}
-            </span> open {visibleStories.filter((s: any) => s.status?.name !== "Closed").length === 1 ? "story" : "stories"} step-by-step through the full US flow until Closed. This cannot be undone.
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" className="h-8 text-xs" onClick={() => setCloseStoriesOpen(false)} disabled={closingStories}>
-              Cancel
-            </Button>
-            <Button variant="destructive" className="h-8 text-xs" onClick={closeAllStories} disabled={closingStories}>
-              {closingStories ? "Closing…" : "Confirm"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Stories */}
+      <div className="space-y-2">
+        {stories === undefined ? (
+          [0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
+        ) : visible.length === 0 ? (
+          <Empty className="rounded-xl border border-dashed">
+            <EmptyHeader>
+              <EmptyTitle>{stories.length === 0 ? "No stories in this sprint" : "Nothing matches"}</EmptyTitle>
+              <EmptyDescription>
+                {stories.length === 0
+                  ? isAdmin
+                    ? "Create a story, or add one from the backlog."
+                    : "Nothing is assigned to you here yet."
+                  : "Try another person, status or search."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          visible.map((story: any) => (
+            <StoryRow
+              key={story.id}
+              story={story}
+              tasks={tasksByStory?.[story.id]}
+              health={healthByStory[story.id] ?? healthForStory(story, tasksByStory?.[story.id])}
+              isAdmin={isAdmin}
+              expanded={isExpanded(story)}
+              onToggle={() => setExpandedOverride((prev) => ({ ...prev, [story.id]: !isExpanded(story) }))}
+              highlighted={highlightId === story.id}
+            />
+          ))
+        )}
+      </div>
+
+      {isAdmin && (
+        <VersionSprintModal projectId={projectId} mode="update" version={version} open={editSprintOpen} onOpenChange={setEditSprintOpen} hideTrigger />
+      )}
+
+      <AlertDialog open={closeStoriesOpen} onOpenChange={setCloseStoriesOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close {closableStories.length} shown stories?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Each story walks forward to Closed. Stories that still have open tasks are skipped and listed afterwards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={closeAllStories}>
+              Close stories
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

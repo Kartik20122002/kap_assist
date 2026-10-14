@@ -29,7 +29,7 @@ function getMissingFields(story: any): string[] {
     if (!story.estimated_hours) missing.push("Estimated Hours")
     if (!getField(72)?.trim()) missing.push("Acceptance Criteria")
     if (!story.assigned_to?.id) missing.push("Assigned To")
-    if (!story.parent?.id) missing.push("Parent Epic")
+    if (!story.parent?.id) missing.push("Feature")
     if (!getField(45)) missing.push("Approved By")
     return missing
 }
