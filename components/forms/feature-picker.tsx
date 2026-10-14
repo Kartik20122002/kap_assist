@@ -2,18 +2,22 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { IconSelector, IconLayoutList } from "@tabler/icons-react"
+import { IconSelector, IconLayoutList, IconStack3 } from "@tabler/icons-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 import { getFeatures } from "@/lib/api/feature"
+import { getEpics } from "@/lib/api/epic"
 import { ApiConfig } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 
 export const useFeatures = (projectId?: number | null) =>
   useSWR(projectId ? ["features", projectId] : null, () => getFeatures(projectId as number), ApiConfig)
 
-const CLOSED_FEATURE = new Set([5, 6, 9])
+export const useEpics = (projectId?: number | null) =>
+  useSWR(projectId ? ["epics", projectId] : null, () => getEpics(projectId as number), ApiConfig)
+
+const DONE_STATUS = new Set([5, 6, 9])
 const LAST_FEATURE_KEY = "lastFeatureId"
 
 export const rememberFeature = (id: number) => {
@@ -30,20 +34,22 @@ export const lastFeatureId = () => {
   }
 }
 
-// Searchable feature list. Open features first; done/closed ones are listed after.
-export function FeatureCommand({
-  projectId,
+// Searchable issue list: open items first, done/closed after.
+export function IssueCommand({
+  items,
+  loading,
   value,
   onSelect,
+  noun,
 }: {
-  projectId: number
+  items: any[]
+  loading?: boolean
   value?: number | null
-  onSelect: (feature: any) => void
+  onSelect: (issue: any) => void
+  noun: string
 }) {
-  const { data, isLoading } = useFeatures(projectId)
-  const features: any[] = data?.issues ?? []
-  const open = features.filter((f) => !CLOSED_FEATURE.has(f.status?.id))
-  const done = features.filter((f) => CLOSED_FEATURE.has(f.status?.id))
+  const open = items.filter((f) => !DONE_STATUS.has(f.status?.id))
+  const done = items.filter((f) => DONE_STATUS.has(f.status?.id))
 
   const item = (f: any) => (
     <CommandItem key={f.id} value={`#${f.id} ${f.subject}`} data-checked={f.id === value} onSelect={() => onSelect(f)}>
@@ -54,13 +60,65 @@ export function FeatureCommand({
 
   return (
     <Command>
-      <CommandInput placeholder="Find feature…" />
+      <CommandInput placeholder={`Find ${noun}…`} />
       <CommandList>
-        <CommandEmpty>{isLoading ? "Loading features…" : "No feature found."}</CommandEmpty>
-        {open.length > 0 && <CommandGroup heading="Features">{open.map(item)}</CommandGroup>}
+        <CommandEmpty>{loading ? `Loading ${noun}s…` : `No ${noun} found.`}</CommandEmpty>
+        {open.length > 0 && <CommandGroup heading={`Open ${noun}s`}>{open.map(item)}</CommandGroup>}
         {done.length > 0 && <CommandGroup heading="Done / closed">{done.map(item)}</CommandGroup>}
       </CommandList>
     </Command>
+  )
+}
+
+export function FeatureCommand({ projectId, value, onSelect }: { projectId: number; value?: number | null; onSelect: (f: any) => void }) {
+  const { data, isLoading } = useFeatures(projectId)
+  return <IssueCommand items={data?.issues ?? []} loading={isLoading} value={value} onSelect={onSelect} noun="feature" />
+}
+
+function IssuePicker({
+  items,
+  loading,
+  value,
+  onChange,
+  invalid,
+  noun,
+  icon: Icon,
+}: {
+  items: any[]
+  loading?: boolean
+  value: number | null
+  onChange: (issue: any) => void
+  invalid?: boolean
+  noun: string
+  icon: typeof IconLayoutList
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = items.find((f: any) => f.id === value)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={<Button variant="outline" aria-invalid={invalid || undefined} className="h-8 w-full justify-between gap-2 px-2.5 font-normal" />}
+      >
+        <span className={cn("flex min-w-0 items-center gap-1.5", !value && "text-muted-foreground")}>
+          <Icon className="shrink-0 opacity-60" />
+          <span className="truncate">{selected ? selected.subject : value ? `#${value}` : `Choose a ${noun}`}</span>
+        </span>
+        <IconSelector className="shrink-0 opacity-50" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-(--anchor-width) min-w-80 gap-0 p-0">
+        <IssueCommand
+          items={items}
+          loading={loading}
+          value={value}
+          noun={noun}
+          onSelect={(f) => {
+            onChange(f)
+            setOpen(false)
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -75,40 +133,44 @@ export function FeaturePicker({
   onChange: (id: number) => void
   invalid?: boolean
 }) {
-  const [open, setOpen] = useState(false)
-  const { data } = useFeatures(projectId)
-  const selected = (data?.issues ?? []).find((f: any) => f.id === value)
-
+  const { data, isLoading } = useFeatures(projectId)
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            variant="outline"
-            aria-invalid={invalid || undefined}
-            className="h-8 w-full justify-between gap-2 px-2.5 font-normal"
-          />
-        }
-      >
-        <span className={cn("flex min-w-0 items-center gap-1.5", !value && "text-muted-foreground")}>
-          <IconLayoutList className="shrink-0 opacity-60" />
-          <span className="truncate">
-            {selected ? selected.subject : value ? `#${value}` : "Choose a feature"}
-          </span>
-        </span>
-        <IconSelector className="shrink-0 opacity-50" />
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--anchor-width) min-w-80 gap-0 p-0">
-        <FeatureCommand
-          projectId={projectId}
-          value={value}
-          onSelect={(f) => {
-            onChange(f.id)
-            rememberFeature(f.id)
-            setOpen(false)
-          }}
-        />
-      </PopoverContent>
-    </Popover>
+    <IssuePicker
+      items={data?.issues ?? []}
+      loading={isLoading}
+      value={value}
+      invalid={invalid}
+      noun="feature"
+      icon={IconLayoutList}
+      onChange={(f) => {
+        onChange(f.id)
+        rememberFeature(f.id)
+      }}
+    />
+  )
+}
+
+export function EpicPicker({
+  projectId,
+  value,
+  onChange,
+  invalid,
+}: {
+  projectId: number
+  value: number | null
+  onChange: (id: number) => void
+  invalid?: boolean
+}) {
+  const { data, isLoading } = useEpics(projectId)
+  return (
+    <IssuePicker
+      items={data ?? []}
+      loading={isLoading}
+      value={value}
+      invalid={invalid}
+      noun="epic"
+      icon={IconStack3}
+      onChange={(e) => onChange(e.id)}
+    />
   )
 }

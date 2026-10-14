@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,9 +16,11 @@ import { updateStory } from "@/lib/api/story"
 import { mutate } from "swr"
 import useSWR from "swr"
 import { ApiConfig } from "@/lib/utils"
+import { pickCurrentSprint, sortSprints } from "@/lib/session"
 import { toast } from "sonner"
+import { IconTargetArrow } from "@tabler/icons-react"
 
-function getMissingFields(story: any): string[] {
+export function getMissingFields(story: any): string[] {
     const getField = (id: number) =>
         story.custom_fields?.find((f: any) => f.id === id)?.value ?? ""
 
@@ -54,33 +56,28 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
         ApiConfig
     )
 
-    const openSprints = (sprintsData?.versions ?? [])
-        .filter((s: any) => s.status === "open")
-        .sort((a: any, b: any) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime())
+    const openSprints = sortSprints(sprintsData?.versions ?? []).filter((s: any) => s.status === "open")
+    // Default = current sprint (first open by name); the user can pick another
+    const sprintChoice = selectedSprintId || String(pickCurrentSprint(openSprints)?.id ?? "")
 
-    useEffect(() => {
-        if (openSprints.length > 0 && !selectedSprintId) {
-            setSelectedSprintId(String(openSprints[0].id))
-        }
-    }, [openSprints.length])
-
-    useEffect(() => {
-        if (!open) {
+    const changeOpen = (o: boolean) => {
+        setOpen(o)
+        if (!o) {
             setSelectedSprintId("")
             setSelectedAssigneeId("")
         }
-    }, [open])
+    }
 
     const handleSubmit = () => {
-        if (!selectedSprintId) {
+        if (!sprintChoice) {
             toast.error("Please select a sprint")
             return
         }
 
-        const updates: any = { fixed_version_id: Number(selectedSprintId) }
+        const updates: any = { fixed_version_id: Number(sprintChoice) }
         if (selectedAssigneeId) updates.assigned_to_id = Number(selectedAssigneeId)
 
-        const sprintId = selectedSprintId
+        const sprintId = sprintChoice
         toast.promise(
             updateStory(story.id, updates),
             {
@@ -89,7 +86,7 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
                     if (!ok) throw new Error("Failed to add to sprint")
                     mutate((key: any) => Array.isArray(key) && key[0] === "backlogStories")
                     mutate((key: any) => Array.isArray(key) && key[0] === "sprintStories" && String(key[1]) === String(sprintId))
-                    setOpen(false)
+                    changeOpen(false)
                     return `"${story.subject}" added to sprint`
                 },
                 error: (err) => err?.message ?? "Failed to add to sprint",
@@ -98,11 +95,11 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={changeOpen}>
             <DialogTrigger
                 render={
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">
-                        Add to Sprint
+                    <Button size="sm" variant="outline">
+                        <IconTargetArrow /> Add to sprint
                     </Button>
                 }
             />
@@ -130,7 +127,7 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
                             ))}
                         </ul>
                         <div className="flex justify-end pt-2">
-                            <Button variant="outline" className="h-8 text-xs" onClick={() => setOpen(false)}>
+                            <Button variant="outline" className="h-8 text-xs" onClick={() => changeOpen(false)}>
                                 Close
                             </Button>
                         </div>
@@ -141,7 +138,7 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
                             <div className="space-y-1">
                                 <div className="text-[10px] opacity-60 font-medium">Sprint *</div>
                                 
-                                <Select value={selectedSprintId} onValueChange={(v) => v != null && setSelectedSprintId(v)}>
+                                <Select value={sprintChoice} onValueChange={(v) => v != null && setSelectedSprintId(v)}>
                                     <SelectTrigger className="h-8 text-xs w-full">
                                         <SelectValue placeholder={openSprints.length === 0 ? "No open sprints" : "Select sprint"} />
                                     </SelectTrigger>
@@ -171,10 +168,10 @@ export default function BacklogAddToSprintModal({ story, projectId }: { story: a
                         </div>
 
                         <div className="flex justify-end gap-2 pt-4">
-                            <Button variant="outline" className="h-8 text-xs" onClick={() => setOpen(false)}>
+                            <Button variant="outline" className="h-8 text-xs" onClick={() => changeOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button className="h-8 text-xs" onClick={handleSubmit} disabled={!selectedSprintId}>
+                            <Button className="h-8 text-xs" onClick={handleSubmit} disabled={!sprintChoice}>
                                 Add to Sprint
                             </Button>
                         </div>

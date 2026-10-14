@@ -1,6 +1,7 @@
 import { mutate } from "swr"
 
-const SPRINT_KEYS = new Set(["sprintStories", "sprintTasks", "tasks", "sprint", "backlogStories"])
+// Every list that shows issues, so a status change or edit shows up wherever you are
+const SPRINT_KEYS = new Set(["sprintStories", "sprintTasks", "tasks", "sprint", "backlogStories", "featurePage", "featureStories", "features"])
 
 // Re-fetch everything the sprint screen shows (stories, tasks, sprint header).
 export const refreshSprintData = () =>

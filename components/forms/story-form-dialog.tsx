@@ -29,6 +29,7 @@ type Props = {
   // Sprint context: required dates and, on create, the sprint the story goes into.
   sprintId?: number | string | null
   defaultAssigneeId?: number
+  defaultFeatureId?: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -47,7 +48,7 @@ export function StoryFormDialog(props: Props) {
   )
 }
 
-function StoryForm({ mode, projectId, story, sprintId, defaultAssigneeId, onOpenChange }: Props) {
+function StoryForm({ mode, projectId, story, sprintId, defaultAssigneeId, defaultFeatureId, onOpenChange }: Props) {
   const { data: user } = useUser()
   const inSprint = mode === "create" ? !!sprintId : !!story?.fixed_version?.id
 
@@ -58,7 +59,7 @@ function StoryForm({ mode, projectId, story, sprintId, defaultAssigneeId, onOpen
   const [estimate, setEstimate] = useState<string>(
     story?.estimated_hours != null ? String(story.estimated_hours) : points ? String(Number(points) * HOURS_PER_POINT) : ""
   )
-  const [featureId, setFeatureId] = useState<number | null>(story?.parent?.id ?? (mode === "create" ? lastFeatureId() : null))
+  const [featureId, setFeatureId] = useState<number | null>(story?.parent?.id ?? defaultFeatureId ?? (mode === "create" ? lastFeatureId() : null))
   const [assigneeId, setAssigneeId] = useState<string>(
     String(story?.assigned_to?.id ?? defaultAssigneeId ?? user?.id ?? "")
   )

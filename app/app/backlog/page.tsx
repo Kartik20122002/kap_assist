@@ -1,217 +1,226 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { getCurrentUser } from "@/lib/api/user"
-import { getBacklogStories } from "@/lib/api/story"
-import { getProjects } from "@/lib/api/project"
-import { ApiConfig } from "@/lib/utils"
 import { toast } from "sonner"
+import { IconFileImport, IconTargetArrow, IconX } from "@tabler/icons-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import BacklogCreateStoryModal from "@/components/backlogCreateStoryModal"
-import BacklogEditStoryModal from "@/components/backlogEditStoryModal"
-import BacklogAddToSprintModal from "@/components/backlogAddToSprintModal"
-import { StatusMenu } from "@/components/sprint/status-menu"
-import { FeatureChip } from "@/components/sprint/feature-chip"
-
-const PAGE_SIZE = 15
+import { getMissingFields } from "@/components/backlogAddToSprintModal"
+import { BacklogRow } from "@/components/backlog/backlog-row"
+import { ListToolbar } from "@/components/list/list-toolbar"
+import { Pager } from "@/components/list/pager"
+import { listIssues } from "@/lib/api/issues"
+import { updateIssue } from "@/lib/api/issue"
+import { ApiConfig } from "@/lib/utils"
+import { useProjects, useSprints, useUser } from "@/hooks/use-kap"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { isProjectAdmin, pickCurrentSprint, sortSprints } from "@/lib/session"
+import { refreshSprintData } from "@/lib/refresh"
+import { useProjectStore } from "@/store/projectStore"
 
 export default function BacklogPage() {
-  const [projectId, setProjectId] = useState<number>(0)
-  const [page, setPage] = useState(0)
+  const projectId = useProjectStore((s) => s.projectId) ?? 0
+  const { data: user } = useUser()
+  const { data: projects } = useProjects()
+  const project = projects?.find((p: any) => p.id === projectId)
+  const isAdmin = isProjectAdmin(user, projectId)
 
-  useEffect(() => {
-    const stored = localStorage.getItem("selectedProject")
-    if (stored) setProjectId(Number(stored))
-  }, [])
+  // Filters live in state; every change goes back to page 1
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [query, setQuery] = useState("")
+  const [mine, setMine] = useState(false)
+  const [sort, setSort] = useState("id:desc")
+  const q = useDebouncedValue(query)
 
-  useEffect(() => { setPage(0) }, [projectId])
-
-  const { data: user } = useSWR(["user"], getCurrentUser, ApiConfig)
-  const { data: projects } = useSWR(["projects"], getProjects, ApiConfig)
-
-  const project = useMemo(
-    () => projects?.find((p: any) => p.id === projectId),
-    [projects, projectId]
+  const { data, isLoading, isValidating } = useSWR(
+    projectId ? ["backlogStories", projectId, page, pageSize, q, mine, sort] : null,
+    () =>
+      listIssues({
+        projectId,
+        trackerId: 5,
+        status: "open",
+        noVersion: true,
+        assignedTo: mine ? "me" : undefined,
+        q,
+        sort,
+        offset: (page - 1) * pageSize,
+        limit: pageSize,
+      }),
+    { ...ApiConfig, keepPreviousData: true }
   )
+  const stories = data?.issues ?? []
+  const total = data?.total_count ?? 0
 
-  const roles = useMemo(() => {
-    if (!user?.memberships || !projectId) return []
-    return user.memberships
-      .map((mm: any) => mm.project?.id === projectId ? mm.roles ?? [] : [])
-      .flat()
-      .sort((a: any, b: any) => a.id - b.id)
-  }, [user?.memberships, projectId])
+  // ── Multi-select → add to sprint ───────────────────────────────────────────
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const selectedStories = stories.filter((s) => selected.has(s.id))
+  const toggle = (id: number, checked: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  const allOnPage = stories.length > 0 && stories.every((s) => selected.has(s.id))
 
-  const isAdmin = roles?.some((role: any) => role.id === 6)
-  const offset = page * PAGE_SIZE
+  const { data: sprints } = useSprints(projectId)
+  const openSprints = useMemo(() => sortSprints(sprints?.versions ?? []).filter((v: any) => v.status === "open"), [sprints])
+  const [targetSprint, setTargetSprint] = useState<string>("")
+  const sprintId = targetSprint || String(pickCurrentSprint(openSprints)?.id ?? "")
+  const [moving, setMoving] = useState(false)
 
-  const { data } = useSWR(
-    projectId ? ["backlogStories", projectId, offset] : null,
-    () => getBacklogStories(projectId, offset, PAGE_SIZE),
-    ApiConfig
-  )
-
-  const stories = (data?.issues ?? []).filter((s: any) => s.tracker?.id === 5)
-  const totalCount = data?.total_count ?? 0
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
-
-  if (!projectId) {
-    return (
-      <div className="p-6 text-sm text-muted-foreground">
-        No project selected. Please select a project from the sidebar.
-      </div>
-    )
+  const addSelectedToSprint = async () => {
+    if (!sprintId) return
+    setMoving(true)
+    const toastId = toast.loading(`Adding ${selectedStories.length} stories…`)
+    const failed: string[] = []
+    let added = 0
+    for (const story of selectedStories) {
+      const missing = getMissingFields(story)
+      if (missing.length) {
+        failed.push(`#${story.id}: missing ${missing.join(", ")}`)
+        continue
+      }
+      try {
+        await updateIssue(story.id, { fixed_version_id: Number(sprintId) })
+        added++
+      } catch (e: any) {
+        failed.push(`#${story.id}: ${e?.message}`)
+      }
+    }
+    await refreshSprintData()
+    setSelected(new Set())
+    setMoving(false)
+    const name = openSprints.find((s: any) => String(s.id) === sprintId)?.name
+    if (failed.length) toast.error(`${added} of ${selectedStories.length} added to ${name}`, { id: toastId, description: failed.join("\n") })
+    else toast.success(`${added} stories added to ${name}`, { id: toastId })
   }
 
-  const Pagination = () => (
-    <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
-      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setPage(p => p - 1)} disabled={page === 0}>Prev</Button>
-      <span>Page {page + 1} of {totalPages} · {offset + 1}–{Math.min(offset + PAGE_SIZE, totalCount)} of {totalCount}</span>
-      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}>Next</Button>
-    </div>
-  )
+  const resetPage = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v)
+    setPage(1)
+    setSelected(new Set())
+  }
+
+  if (!projectId) {
+    return <div className="p-6 text-sm text-muted-foreground">Select a project from the sidebar.</div>
+  }
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-
-      {/* HEADER */}
-      <Card className="bg-muted/40">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div>
-              <CardTitle className="text-lg">Backlog</CardTitle>
-              {project && (
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {project.name} · User stories not assigned to any sprint
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setPage(p => p - 1)} disabled={page === 0}>Prev</Button>
-                  <span className="px-1">{page + 1} / {totalPages}</span>
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}>Next</Button>
-                </div>
-              )}
-              {isAdmin && projectId > 0 && (
-                <>
-                  <a
-                    href={`/app/backlog/bulk-import?projectId=${projectId}`}
-                    className="inline-flex items-center h-7 px-3 text-xs rounded-md border border-border hover:bg-input/50 transition-colors font-medium"
-                  >
-                    Add Bulk Stories
-                  </a>
-                  <BacklogCreateStoryModal projectId={projectId} />
-                </>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* STORIES */}
-      <Card className="bg-muted/40">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            User Stories
-            {totalCount > 0 && <Badge variant="outline" className="text-[10px]">{totalCount}</Badge>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {data === undefined && <div className="text-xs text-muted-foreground">Loading…</div>}
-          {data !== undefined && stories.length === 0 && (
-            <div className="text-xs text-muted-foreground">No backlog user stories found.</div>
-          )}
-          {stories.map((story: any) => (
-            <BacklogStoryCard key={story.id} story={story} isAdmin={isAdmin} projectId={projectId} />
-          ))}
-          {totalPages > 1 && stories.length > 0 && <Pagination />}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-export function BacklogStoryCard({
-  story,
-  isAdmin,
-  projectId,
-  showAddToSprint = true,
-}: {
-  story: any
-  isAdmin: boolean
-  projectId: number
-  showAddToSprint?: boolean
-}) {
-  const storyPoints =
-    story.rb_story_points ||
-    story.custom_fields?.find((f: any) => f.name.includes("Story Point"))?.value ||
-    "-"
-
-  const acceptance = story.custom_fields?.find((f: any) =>
-    f.name.includes("Acceptance")
-  )?.value
-
-  return (
-    <Card className="bg-muted/40 transition">
-      <CardContent className="p-3 space-y-2">
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-          <div className="min-w-0">
-            <span
-              className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-              title="Click to copy ID"
-              onClick={() =>
-                navigator.clipboard.writeText(String(story.id))
-                  .then(() => toast.success(`#${story.id} copied`))
-              }
-            >
-              #{story.id}
-            </span>
-            <div className="text-base font-medium line-clamp-2 sm:line-clamp-1">
-              {story.subject}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <FeatureChip story={story} canEdit={isAdmin} />
-            <StatusMenu issue={story} canEdit={isAdmin} />
-            {isAdmin && <BacklogEditStoryModal story={story} />}
-            {isAdmin && showAddToSprint && story.tracker?.id === 5 && (
-              <BacklogAddToSprintModal story={story} projectId={projectId} />
-            )}
-          </div>
+    <div className="w-full space-y-3 p-3 md:space-y-4 md:p-6 lg:px-8">
+      {/* Header */}
+      <header className="flex flex-wrap items-center gap-2">
+        <div className="mr-auto">
+          <h1 className="flex items-center gap-2 text-lg font-semibold">
+            Backlog
+            {data && <Badge variant="secondary" className="tabular-nums">{total}</Badge>}
+          </h1>
+          <p className="text-xs text-muted-foreground">{project?.name} · open user stories not in any sprint</p>
         </div>
-
-        {/* Meta grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-1 text-xs">
-          <div>
-            <span className="opacity-60">Assigned</span>
-            <div>{story.assigned_to?.name || "-"}</div>
-          </div>
-          <div>
-            <span className="opacity-60">Author</span>
-            <div>{story.author?.name || "-"}</div>
-          </div>
-          <div>
-            <span className="opacity-60">Story Points</span>
-            <div>{storyPoints}</div>
-          </div>
-          <div>
-            <span className="opacity-60">Est. Hours</span>
-            <div>{story.estimated_hours ?? "-"}</div>
-          </div>
-        </div>
-
-        {acceptance && (
-          <div className="text-[10px] text-muted-foreground line-clamp-2">{acceptance}</div>
+        {isAdmin && (
+          <>
+            <Button variant="outline" render={<Link href={`/app/backlog/bulk-import?projectId=${projectId}`} />}>
+              <IconFileImport /> Bulk import
+            </Button>
+            <BacklogCreateStoryModal projectId={projectId} />
+          </>
         )}
-      </CardContent>
-    </Card>
+      </header>
+
+      <ListToolbar
+        query={query}
+        onQuery={resetPage(setQuery)}
+        mine={mine}
+        onMine={resetPage(setMine)}
+        sort={sort}
+        onSort={resetPage(setSort)}
+        placeholder="Search by subject or #id"
+      >
+        {isAdmin && stories.length > 0 && (
+          <label className="flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-md border px-2.5 text-xs">
+            <input
+              type="checkbox"
+              checked={allOnPage}
+              onChange={(e) => setSelected(e.target.checked ? new Set(stories.map((s) => s.id)) : new Set())}
+              className="size-4 accent-primary"
+            />
+            Select page
+          </label>
+        )}
+      </ListToolbar>
+
+      {/* Bulk bar */}
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-background/95 p-2 pl-3 shadow-sm backdrop-blur">
+          <span className="text-xs font-medium">{selected.size} selected</span>
+          <span className="text-xs text-muted-foreground">→ add to</span>
+          <Select value={sprintId} onValueChange={(v) => v && setTargetSprint(String(v))}>
+            <SelectTrigger className="h-8 min-w-36 text-xs">
+              <SelectValue>{openSprints.find((s: any) => String(s.id) === sprintId)?.name ?? "Choose sprint"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {openSprints.map((s: any) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={addSelectedToSprint} disabled={!sprintId || moving}>
+            <IconTargetArrow /> {moving ? "Adding…" : "Add to sprint"}
+          </Button>
+          <Button variant="ghost" className="ml-auto" onClick={() => setSelected(new Set())}>
+            <IconX /> Clear
+          </Button>
+        </div>
+      )}
+
+      {/* List */}
+      <div className={`space-y-2 transition-opacity ${isValidating && data ? "opacity-60" : ""}`}>
+        {isLoading && !data ? (
+          [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
+        ) : stories.length === 0 ? (
+          <Empty className="rounded-xl border border-dashed">
+            <EmptyHeader>
+              <EmptyTitle>{q || mine ? "Nothing matches" : "Backlog is empty"}</EmptyTitle>
+              <EmptyDescription>{q || mine ? "Try another search or Everyone." : "New stories without a sprint show up here."}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          stories.map((story) => (
+            <BacklogRow
+              key={story.id}
+              story={story}
+              isAdmin={isAdmin}
+              projectId={projectId}
+              selected={selected.has(story.id)}
+              onSelect={(c) => toggle(story.id, c)}
+            />
+          ))
+        )}
+      </div>
+
+      {total > 0 && (
+        <Pager
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          loading={isValidating}
+          onPage={(p) => {
+            setPage(p)
+            setSelected(new Set())
+            window.scrollTo({ top: 0, behavior: "smooth" })
+          }}
+          onPageSize={resetPage(setPageSize)}
+        />
+      )}
+    </div>
   )
 }

@@ -1,34 +1,18 @@
 import { NextRequest } from "next/server"
+import { fetchAllPages, redmineBase } from "@/lib/server/redmine"
 
+// All epics (tracker 4) of a project, every page.
 export async function GET(req: NextRequest) {
   try {
-    const apiKey = req.headers.get("x-api-key")
-    const baseUrl = req.headers.get("x-base-url") || "https://kap01.kpit.com/kap"
-    const projectId = req.nextUrl.searchParams.get("project_id")
-    const assigned_to = req.nextUrl.searchParams.get("assigned_to")
+    const projectId = encodeURIComponent(req.nextUrl.searchParams.get("project_id") ?? "")
+    const assignedTo = req.nextUrl.searchParams.get("assigned_to")
+    let url = `${redmineBase(req)}/issues.json?tracker_id=4&project_id=${projectId}&status_id=*`
+    if (assignedTo) url += `&assigned_to_id=${encodeURIComponent(assignedTo)}`
 
-    let url = `${baseUrl}/issues.json?tracker_id=4&project_id=${projectId}`
-
-    if (assigned_to) url = url + `&assigned_to_id=${assigned_to}`
-
-    const res = await fetch(
-      url,
-      {
-        headers: {
-          "X-Redmine-API-Key": apiKey || "",
-          "Content-Type": "application/json",
-        },
-      }
-    )
-
-    if (res.status === 200) {
-      const data = await res.json()
-      return Response.json(data)
-    }
-    else return Response.json({ data: { issues: [] } })
-
-  }
-  catch (err) {
-    return Response.json({ data: { issues: [] } })
+    const result = await fetchAllPages(req, url, "issues")
+    if (!result.ok) return Response.json({ issues: [] }, { status: result.status })
+    return Response.json({ issues: result.items, total_count: result.items.length })
+  } catch (err) {
+    return Response.json({ issues: [] }, { status: 500 })
   }
 }
