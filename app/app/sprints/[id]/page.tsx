@@ -50,7 +50,7 @@ import { getStoriesBySprint } from "@/lib/api/story"
 import { getTasks } from "@/lib/api/task"
 import { ApiConfig } from "@/lib/utils"
 import { useSprints, useUser } from "@/hooks/use-kap"
-import { isProjectAdmin, userDisplayName, initials } from "@/lib/session"
+import { isProjectAdmin, userDisplayName, initials, rememberSprint } from "@/lib/session"
 import { ACTIVE_STATUSES, DONE_STATUSES, STATUS, runStatusJump } from "@/lib/workflow"
 import { healthForStory, storyEstimate, storyPoints, storySpent } from "@/lib/health"
 import { refreshSprintData } from "@/lib/refresh"
@@ -87,6 +87,11 @@ export default function SprintPage() {
   useEffect(() => {
     if (projectId && useProjectStore.getState().projectId !== projectId) setProjectId(projectId)
   }, [projectId, setProjectId])
+
+  // Opening /app (or the sidebar's Sprint link) comes back here next time
+  useEffect(() => {
+    if (projectId && version?.id) rememberSprint(projectId, version.id)
+  }, [projectId, version?.id])
 
   const { data: stories } = useSWR(
     version ? ["sprintStories", sprintId, isAdmin] : null,

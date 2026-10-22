@@ -1,35 +1,14 @@
-import { addDaysISO, isWeekend, toLocalISO, todayLocal } from "@/lib/date"
+import { addDaysISO, isWeekend, mondayOf, todayLocal } from "@/lib/date"
 
-// Sprints are two weeks long and named <YY>_CW<week> after the ISO week they start in.
+// Sprints are two weeks long. Names are free text, so everything here comes from
+// the due date (the sprint's last day); a sprint without one has no window.
 export const SPRINT_WEEKS = 2
 
-const NAME_RE = /^(\d{2})_CW(\d{1,2})$/
-
-// Monday of ISO week `week` in `year`.
-const isoWeekMonday = (year: number, week: number) => {
-  const jan4 = new Date(year, 0, 4)
-  const mondayWeek1 = new Date(jan4)
-  mondayWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7))
-  mondayWeek1.setDate(mondayWeek1.getDate() + (week - 1) * 7)
-  return toLocalISO(mondayWeek1)
-}
-
-const parseName = (name?: string) => {
-  const m = NAME_RE.exec(name ?? "")
-  return m ? { year: 2000 + Number(m[1]), week: Number(m[2]) } : null
-}
-
-// Start/end of a sprint. Start comes from the name; end is the due date, or the
-// Friday of the second week when no due date is set.
+// Start = Monday of the first week, end = the due date.
 export const sprintWindow = (version: any): { start: string; end: string } | null => {
-  const parsed = parseName(version?.name)
-  if (parsed) {
-    const start = isoWeekMonday(parsed.year, parsed.week)
-    const end = version?.due_date ?? addDaysISO(start, SPRINT_WEEKS * 7 - 3)
-    return { start, end }
-  }
-  if (version?.due_date) return { start: addDaysISO(version.due_date, -(SPRINT_WEEKS * 7 - 3)), end: version.due_date }
-  return null
+  const end = version?.due_date
+  if (!end) return null
+  return { start: addDaysISO(mondayOf(end), -(SPRINT_WEEKS - 1) * 7), end }
 }
 
 export const workdays = (start: string, end: string) => {
@@ -48,19 +27,8 @@ export const sprintDayProgress = (version: any) => {
   return { ...win, total: days.length, day: Math.min(elapsed, days.length) }
 }
 
-// Name and due date for the sprint after the latest one.
+// Due date for the sprint after the latest one; the name is left to the user.
 export const suggestNextSprint = (latest: any) => {
-  const parsed = parseName(latest?.name)
-  if (!parsed) return null
-  let { year, week } = parsed
-  week += SPRINT_WEEKS
-  if (week > 52) {
-    week -= 52
-    year += 1
-  }
-  const start = isoWeekMonday(year, week)
-  return {
-    name: `${String(year % 100).padStart(2, "0")}_CW${String(week).padStart(2, "0")}`,
-    due_date: addDaysISO(start, SPRINT_WEEKS * 7 - 3),
-  }
+  if (!latest?.due_date) return null
+  return { due_date: addDaysISO(latest.due_date, SPRINT_WEEKS * 7) }
 }

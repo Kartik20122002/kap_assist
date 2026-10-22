@@ -19,6 +19,20 @@ export const createIssue = async (issue: any, files?: AttachmentInput[]) => {
   }
 }
 
+// Issue with journals (notes), children, relations and allowed_statuses
+export const getIssue = async (id: number) => {
+  const res = await api.get(`/issue/${id}`)
+  return res?.data?.issue ?? null
+}
+
+export const updateJournal = async (journalId: number, notes: string) => {
+  try {
+    await api.put(`/journals/${journalId}`, { journal: { notes } })
+  } catch (err) {
+    throw new Error(extractError(err))
+  }
+}
+
 export const updateIssue = async (id: number, issue: any, files?: AttachmentInput[]) => {
   try {
     await api.put(`/issue/${id}`, { issue: await withUploads(issue, files) })

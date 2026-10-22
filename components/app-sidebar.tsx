@@ -23,7 +23,7 @@ import { ProjectSwitcher } from "@/components/project-switcher"
 import { NavUser } from "@/components/nav-user"
 import { TodayWidget } from "@/components/today-widget"
 import { useProjects, useSprints } from "@/hooks/use-kap"
-import { pickCurrentSprint } from "@/lib/session"
+import { pickDefaultSprint } from "@/lib/session"
 import { useProjectStore } from "@/store/projectStore"
 import { useUiStore } from "@/store/uiStore"
 
@@ -44,7 +44,10 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     if (!projects.some((p: any) => p.id === projectId)) setProjectId(projects[0].id)
   }, [hydrated, projects, projectId, setProjectId])
 
-  const current = pickCurrentSprint(sprints?.versions)
+  // The sprint on screen, else the one last opened in this project
+  const openSprintId = Number(/^\/app\/sprints\/(\d+)/.exec(pathname)?.[1])
+  const current =
+    sprints?.versions?.find((v: any) => v.id === openSprintId) ?? pickDefaultSprint(projectId, sprints?.versions)
   const sprintHref = current ? `/app/sprints/${current.id}` : "/app"
 
   const nav = [
@@ -53,7 +56,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       href: sprintHref,
       icon: IconTarget,
       active: pathname === "/app" || pathname.startsWith("/app/sprints"),
-      badge: current?.name?.split("_").pop(),
+      badge: current?.name,
     },
     { title: "Backlog", href: "/app/backlog", icon: IconStack2, active: pathname.startsWith("/app/backlog") },
     { title: "Features", href: "/app/features", icon: IconLayoutList, active: pathname.startsWith("/app/features") },
@@ -91,7 +94,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     <item.icon />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
-                  {item.badge && <SidebarMenuBadge className="text-muted-foreground">{item.badge}</SidebarMenuBadge>}
+                  {item.badge && (
+                    <SidebarMenuBadge className="max-w-28 truncate text-muted-foreground" title={item.badge}>
+                      {item.badge}
+                    </SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

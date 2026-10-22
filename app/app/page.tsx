@@ -7,15 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { useSprints } from "@/hooks/use-kap"
-import { pickCurrentSprint } from "@/lib/session"
+import { pickDefaultSprint } from "@/lib/session"
 import { useProjectStore } from "@/store/projectStore"
 
-// /app always lands on the current sprint of the selected project.
+// /app lands on the sprint last opened in the selected project (else its current sprint).
 export default function Page() {
   const router = useRouter()
   const projectId = useProjectStore((s) => s.projectId)
   const { data: sprints, isLoading } = useSprints(projectId)
-  const current = pickCurrentSprint(sprints?.versions)
+  const current = pickDefaultSprint(projectId, sprints?.versions)
 
   useEffect(() => {
     if (current) router.replace(`/app/sprints/${current.id}`)

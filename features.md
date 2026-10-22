@@ -60,9 +60,11 @@ These override anything later in this file that disagrees.
 
 ### L6 — Sprints are two weeks
 
-- A sprint named `YY_CWnn` starts Monday of ISO week `nn` and ends on its due date (or Friday of week `nn+1` if none).
+- Sprint names are free text (`26_CW24`, `26P1.S03.CW19`, `2026_CW43-44` all exist) and ids aren't created in order, so **nothing is derived from the name**. Sprints are ordered by due date (creation date when missing), then id.
+- A sprint ends on its due date and starts on the Monday one week before the due date's week. No due date → no window.
+- Current sprint = first open sprint whose due date hasn't passed (else the latest open one). `/app` and the sidebar open the sprint last opened in that project.
 - Sprint header shows the date range, "Day X of 10" and days left; the sidebar "This sprint" widget shows the sprint's 10 working days.
-- "New sprint" pre-fills the next name (`CWnn+2`) and due date (Friday of the second week).
+- "New sprint" pre-fills the due date (latest due date + 14 days); the name is typed by the user.
 
 ### L7 — Every user story has a feature parent
 

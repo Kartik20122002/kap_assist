@@ -32,8 +32,8 @@ interface VersionSprintModalProps {
     open?: boolean
     onOpenChange?: (open: boolean) => void
     hideTrigger?: boolean
-    // create mode: prefilled name/due date for the next two-week sprint
-    suggestion?: { name: string; due_date: string } | null
+    // create mode: prefilled due date for the next two-week sprint (names are free text)
+    suggestion?: { due_date: string } | null
 }
 
 /**
@@ -79,8 +79,7 @@ export default function VersionSprintModal({
     // Reset form when modal opens/closes
     useEffect(() => {
         if (!open) {
-        } else if (mode === "create" && suggestion && !name) {
-            setName(suggestion.name)
+        } else if (mode === "create" && suggestion && !dueDate) {
             setDueDate(suggestion.due_date)
         } else if (mode === "update" && version) {
             setName(version.name)
